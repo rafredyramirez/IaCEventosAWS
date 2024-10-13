@@ -8,13 +8,13 @@ Para almacenar las lambdas del proyecto cree una carpera dentro del bucket S3
 
 1. lambdas-stack.yml
 
-Comando para aprovicionar en Windows
+Comando para aprovicionar en Windows:
 aws cloudformation create-stack 
     --stack-name lambdas-stack 
     --template-body file://lambdas-stack.yml 
     --capabilities CAPABILITY_NAMED_IAM
 
-Comando para aprovicionar en Mac
+Comando para aprovicionar en Mac:
 aws cloudformation create-stack \
     --stack-name lambdas-stack \
     --template-body file://lambdas-stack.yml \
@@ -22,13 +22,13 @@ aws cloudformation create-stack \
 
 2. api-gateway-stack.yml
 
-Comando para aprovicionar en Windows
+Comando para aprovicionar en Windows:
 aws cloudformation create-stack 
     --stack-name api-gateway-stack 
     --template-body file://api-gateway-stack.yml 
     --capabilities CAPABILITY_NAMED_IAM
 
-Comando para aprovicionar en Mac
+Comando para aprovicionar en Mac:
 aws cloudformation create-stack \
     --stack-name api-gateway-stack \
     --template-body file://api-gateway-stack.yml \
