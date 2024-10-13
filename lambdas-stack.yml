@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Resources:
+  # Rol de ejecución para Lambdas
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action: 
+                  - s3:GetObject
+                Resource: arn:aws:s3:::source-app-eventos-udm/* #nombre bucket s3 
+
+  # Lambda Authorizer
+  AuthorizerLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: AuthorizerLambda
+      Handler: lambda_handler.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Code:
+        S3Bucket: source-app-eventos-udm #nombre bucket s3 
+        S3Key: lambdas/authorizer.zip # subcarpeta dentro del bucket para guardas las lambdas
+      Timeout: 5
+
+  # Permisos para que API Gateway invoque el Lambda Authorizer
+  AuthorizerInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt AuthorizerLambda.Arn
+      Principal: apigateway.amazonaws.com
+
+  # Lambda principal (Prueba - cambiar por reales)
+  HelloLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: HelloLambda
+      Handler: lambda_handler.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Code:
+        S3Bucket: source-app-eventos-udm
+        S3Key: lambdas/hello.zip
+      Timeout: 10
+
+  # Permisos para que API Gateway invoque la Lambda
+  LambdaInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt HelloLambda.Arn
+      Principal: apigateway.amazonaws.com
+
+Outputs:
+  LambdaFunctionArn:
+    Description: "ARN de la Lambda principal"
+    Value: !GetAtt HelloLambda.Arn
+    Export:
+      Name: LambdaFunctionArn
+
+  AuthorizerLambdaArn:  # Exporta el ARN del Authorizer Lambda
+    Description: "ARN del Authorizer Lambda"
+    Value: !GetAtt AuthorizerLambda.Arn
+    Export:
+      Name: AuthorizerLambdaArn
