@@ -1,0 +1,109 @@
+crear politica para tabla de eventos
+
+Politica : lambda-apigateway-policy 
+
+tiene los permisos de crear, modificar y eliminar
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Stmt1428341300017",
+      "Action": [
+        "dynamodb:DeleteItem",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    },
+    {
+      "Sid": "",
+      "Resource": "*",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Effect": "Allow"
+    }
+  ]
+}
+
+
+Crear las lambdas (CAMBIAR EL role con el que se tiene para el API Gateway )
+
+
+aws lambda create-function \
+--function-name LambdaFunctionCrearEvento \
+--zip-file fileb://function1.zip \
+--handler LambdaFunctionCrearEvento.lambda_handler \
+--runtime python3.12 \
+--role arn:aws:iam::253490749741:role/lambda-apigateway-role
+
+aws lambda create-function \
+--function-name LambdaFunctionModificarEvento \
+--zip-file fileb://function2.zip \
+--handler LambdaFunctionModificarEvento.lambda_handler \
+--runtime python3.12 \
+--role arn:aws:iam::253490749741:role/lambda-apigateway-role
+
+aws lambda create-function \
+--function-name LambdaFunctionConsultarEvento \
+--zip-file fileb://function3.zip \
+--handler LambdaFunctionConsultarEvento.lambda_handler \
+--runtime python3.12 \
+--role arn:aws:iam::253490749741:role/lambda-apigateway-role
+
+aws lambda create-function \
+--function-name LambdaFunctionEliminarEvento \
+--zip-file fileb://function4.zip \
+--handler LambdaFunctionEliminarEvento.lambda_handler \
+--runtime python3.12 \
+--role arn:aws:iam::253490749741:role/lambda-apigateway-role
+
+
+
+Pruebas de las Lambdas.
+
+Crear
+
+
+{
+  "id_evento": "EVENT0001",
+  "nombre_evento": "Super concierto",
+  "descripcion": "Super concierto de feria",
+  "fecha": "2024-10-12",
+  "hora": "20:14",
+  "capacidad_max": "1000",
+  "organizador": "Eventos xza",
+  "estado": "ACTIVO",
+  "lugar_evento": "Estadio"
+}
+
+Modificar
+
+{
+  "id_evento": "EVENT0001",
+  "nombre_evento": "Funcion de teatro Amigos de la casa",
+  "descripcion": "Funcion de teatro Amigos de la casa por primera vez Medellín",
+  "fecha": "2024-10-13",
+  "hora": "10:00",
+  "capacidad_max": "1000",
+  "organizador": "Eventos xza",
+  "estado": "ACTIVO",
+  "lugar_evento": "Teatro Principal"
+}
+
+Consultar
+{
+  "id_evento": "EVENT0001"
+}
+
+Eliminar
+{
+  "id_evento": "EVENT0001"
+}
