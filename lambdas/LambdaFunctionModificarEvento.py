@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 
 # Inicializa el cliente de DynamoDB
 dynamodb = boto3.resource("dynamodb")
-table_name = os.environ["TABLE_NAME"]
+table_name = "eventos"
 table = dynamodb.Table(table_name)
 
 def lambda_handler(event, context):

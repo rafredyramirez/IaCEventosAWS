@@ -6,7 +6,7 @@ from decimal import Decimal
 
 # Inicializa el cliente de DynamoDB
 dynamodb = boto3.resource("dynamodb")
-table_name = os.environ["TABLE_NAME"]
+table_name = "eventos"
 table = dynamodb.Table(table_name)
 
 # Función para convertir Decimals a float para serialización
