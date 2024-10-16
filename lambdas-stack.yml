@@ -62,6 +62,58 @@ Resources:
         S3Key: lambdas/hello.zip
       Timeout: 10
 
+  # Lambda lambdaFunctionCrearEvento --Monica
+  CrearEventoLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: lambdaFunctionCrearEvento
+      Handler: lambda_handler.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Code:
+        S3Bucket: source-app-eventos-udm
+        S3Key: lambdas/lambdaFunctionCrearEvento.zip
+      Timeout: 10
+
+  # Lambda lambdaFunctionModificarEvento --Monica
+  EditarEventoLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: lambdaFunctionModificarEvento
+      Handler: lambda_handler.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Code:
+        S3Bucket: source-app-eventos-udm
+        S3Key: lambdas/lambdaFunctionModificarEvento.zip
+      Timeout: 10
+
+  # Lambda lambdaFunctionEliminarEvento --Monica
+  EliminarEventoLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: lambdaFunctionEliminarEvento
+      Handler: lambda_handler.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Code:
+        S3Bucket: source-app-eventos-udm
+        S3Key: lambdas/lambdaFunctionEliminarEvento.zip
+      Timeout: 10
+
+  # Lambda lambdaFunctionConsultarEvento --Monica
+  ConsultarEventoLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: lambdaFunctionConsultarEvento
+      Handler: lambda_handler.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Code:
+        S3Bucket: source-app-eventos-udm
+        S3Key: lambdas/lambdaFunctionConsultarEvento.zip
+      Timeout: 10
+
   # Permisos para que API Gateway invoque la Lambda
   LambdaInvokePermission:
     Type: 'AWS::Lambda::Permission'
