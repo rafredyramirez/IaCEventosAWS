@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Resources:
+  # Fredy 
+  # Rol de ejecución para Lambdas
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - lambda.amazonaws.com
+                - apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+      Policies:
+        - PolicyName: LambdaExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action: 
+                  - s3:GetObject
+                Resource: arn:aws:s3:::source-app-eventos-udm/*
+
+  # Lambda Authorizer
+  AuthorizerLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: AuthorizerLambda
+      Handler: authorizer.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Code:
+        S3Bucket: source-app-eventos-udm-
+        S3Key: lambdas/authorizer.zip        
+      Timeout: 5
+
+  # Lambda principal
+  HelloLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: HelloLambda
+      Handler: hello.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Code:
+        S3Bucket: source-app-eventos-udm
+        S3Key: lambdas/hello.zip
+      Timeout: 10
+  
+  # API Gateway
+  ApiGatewayRestApi:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Name: ApiRestEventos
+      Description: 'API Gateway para gestionar eventos'
+      EndpointConfiguration:
+        Types:
+          - REGIONAL  # Tipo de punto de conexión: Regional
+
+  # Recurso "/eventos"
+  EventosResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId  # Hace referencia al recurso raíz
+      PathPart: "eventos"  # Define la ruta como "/eventos"
+      RestApiId: !Ref ApiGatewayRestApi
+
+  # Authorizer para la API Gateway
+  ApiGatewayAuthorizer:
+    Type: 'AWS::ApiGateway::Authorizer'
+    Properties:
+      Name: AuthorizerLambda
+      RestApiId: !Ref ApiGatewayRestApi
+      Type: TOKEN
+      AuthorizerUri: !Sub
+        arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerLambda.Arn}/invocations
+      IdentitySource: method.request.header.Authorization
+      # AuthorizerResultTtlInSeconds: 0  # Deshabilita el caché
+
+  # Método POST en "/eventos"
+  PostMethodForEventos:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      AuthorizationType: CUSTOM  # Tipo de autorización personalizada usando Lambda Authorizer
+      AuthorizerId: !Ref ApiGatewayAuthorizer  # Utiliza el Authorizer que creamos
+      HttpMethod: POST
+      # ResourceId: !GetAtt ApiGatewayRestApi.RootResourceId  # Utiliza el recurso raíz directamente
+      ResourceId: !Ref EventosResource
+      RestApiId: !Ref ApiGatewayRestApi
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS
+        Uri: !Sub
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${HelloLambda.Arn}/invocations
+        TimeoutInMillis: 29000  # Configura el timeout a 29 segundos
+        IntegrationResponses:
+          - StatusCode: 200
+      # AuthorizerCacheTtlInSeconds: 0  # Desactiva el almacenamiento en caché de la autorización
+
+  # Permisos para que API Gateway invoque la Lambda principal
+  LambdaInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt HelloLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
+
+  # Permisos para que API Gateway invoque el Lambda Authorizer
+  AuthorizerInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt AuthorizerLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
+
+  # Despliegue del API Gateway
+  ApiDeployment:
+    Type: 'AWS::ApiGateway::Deployment'
+    DependsOn: PostMethodForEventos
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      StageName: test  # Nombre de la etapa de despliegue
+
+Outputs:
+  ApiId:
+    Description: "ID del API Gateway"
+    Value: !Ref ApiGatewayRestApi
+
+  RootResourceId:
+    Description: "ID del recurso raíz del API"
+    Value: !GetAtt ApiGatewayRestApi.RootResourceId
+
+  AuthorizerLambdaArn:
+    Description: "ARN de la función Lambda Authorizer"
+    Value: !GetAtt AuthorizerLambda.Arn
+
+  HelloLambdaArn:
+    Description: "ARN de la función Lambda principal"
+    Value: !GetAtt HelloLambda.Arn
