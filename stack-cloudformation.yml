@@ -1,7 +1,9 @@
+#fredy
+#configuración lambda authorizer y API Gateway falta configurar lambdas para eventos, asistentes 
 AWSTemplateFormatVersion: '2010-09-09'
 
 Resources:
-  # Fredy 
+
   # Rol de ejecución para Lambdas
   LambdaExecutionRole:
     Type: 'AWS::IAM::Role'
@@ -42,7 +44,7 @@ Resources:
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
       Code:
-        S3Bucket: source-app-eventos-udm-
+        S3Bucket: source-app-eventos-udm
         S3Key: lambdas/authorizer.zip        
       Timeout: 5
 
@@ -86,8 +88,8 @@ Resources:
       Type: TOKEN
       AuthorizerUri: !Sub
         arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerLambda.Arn}/invocations
-      IdentitySource: method.request.header.Authorization
-      # AuthorizerResultTtlInSeconds: 0  # Deshabilita el caché
+      IdentitySource: method.request.header.authorizationToken
+      AuthorizerResultTtlInSeconds: 0  # Deshabilita el caché
 
   # Método POST en "/eventos"
   PostMethodForEventos:
@@ -96,18 +98,21 @@ Resources:
       AuthorizationType: CUSTOM  # Tipo de autorización personalizada usando Lambda Authorizer
       AuthorizerId: !Ref ApiGatewayAuthorizer  # Utiliza el Authorizer que creamos
       HttpMethod: POST
-      # ResourceId: !GetAtt ApiGatewayRestApi.RootResourceId  # Utiliza el recurso raíz directamente
       ResourceId: !Ref EventosResource
       RestApiId: !Ref ApiGatewayRestApi
       Integration:
         IntegrationHttpMethod: POST
-        Type: AWS
+        # Type: AWS
+        Type: AWS_PROXY
         Uri: !Sub
           arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${HelloLambda.Arn}/invocations
         TimeoutInMillis: 29000  # Configura el timeout a 29 segundos
         IntegrationResponses:
           - StatusCode: 200
-      # AuthorizerCacheTtlInSeconds: 0  # Desactiva el almacenamiento en caché de la autorización
+      MethodResponses:
+        - StatusCode: 200
+      RequestParameters:
+        method.request.header.Authorization: false  # No usar caché
 
   # Permisos para que API Gateway invoque la Lambda principal
   LambdaInvokePermission:
@@ -135,21 +140,4 @@ Resources:
     DependsOn: PostMethodForEventos
     Properties:
       RestApiId: !Ref ApiGatewayRestApi
-      StageName: test  # Nombre de la etapa de despliegue
-
-Outputs:
-  ApiId:
-    Description: "ID del API Gateway"
-    Value: !Ref ApiGatewayRestApi
-
-  RootResourceId:
-    Description: "ID del recurso raíz del API"
-    Value: !GetAtt ApiGatewayRestApi.RootResourceId
-
-  AuthorizerLambdaArn:
-    Description: "ARN de la función Lambda Authorizer"
-    Value: !GetAtt AuthorizerLambda.Arn
-
-  HelloLambdaArn:
-    Description: "ARN de la función Lambda principal"
-    Value: !GetAtt HelloLambda.Arn
+      StageName: dev  # Nombre de la etapa de despliegue
