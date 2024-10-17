@@ -5,6 +5,8 @@ import os
 from datetime import datetime
 from botocore.exceptions import ClientError
 
+# Lambda que permite crear un evento
+
 # Inicializa el cliente de DynamoDB
 dynamodb = boto3.resource("dynamodb")
 table_name = "eventos"

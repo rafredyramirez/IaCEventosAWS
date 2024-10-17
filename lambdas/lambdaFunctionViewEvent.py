@@ -2,11 +2,20 @@ import json
 import boto3
 import os
 from botocore.exceptions import ClientError
+from decimal import Decimal
+
+# Lambda que permite consultar un evento
 
 # Inicializa el cliente de DynamoDB
 dynamodb = boto3.resource("dynamodb")
 table_name = "eventos"
 table = dynamodb.Table(table_name)
+
+# Función para convertir Decimals a float para serialización
+def decimal_to_float(obj):
+    if isinstance(obj, Decimal):
+        return float(obj)
+    raise TypeError
 
 def lambda_handler(event, context):
     try:
@@ -24,32 +33,31 @@ def lambda_handler(event, context):
                 'body': json.dumps("Falta el campo requerido: id_evento")
             }
 
-        # Realiza la operación de eliminación en DynamoDB utilizando la clave primaria (id_evento)
-        response = table.delete_item(
+        # Realiza la consulta en DynamoDB utilizando la clave primaria (id_evento)
+        response = table.get_item(
             Key={
                 'id_evento': data['id_evento']
-            },
-            ReturnValues='ALL_OLD'  # Retorna el valor del item antes de eliminarlo, si existe
+            }
         )
 
-        # Verifica si el evento existía antes de eliminarlo
-        if 'Attributes' not in response:
+        # Verifica si el evento existe en la tabla
+        if 'Item' not in response:
             return {
                 'statusCode': 404,
                 'body': json.dumps(f"Evento con ID {data['id_evento']} no encontrado")
             }
 
-        # Respuesta de éxito indicando que el evento fue eliminado
+        # Convierte la respuesta en JSON, manejando los Decimals
         return {
             'statusCode': 200,
-            'body': json.dumps(f"Evento con ID {data['id_evento']} eliminado con éxito")
+            'body': json.dumps(response['Item'], default=decimal_to_float)  # Serializa Decimals a float
         }
     
     except ClientError as e:
         # Manejo de errores si hay problemas al acceder a DynamoDB
         return {
             'statusCode': 500,
-            'body': json.dumps(f"Error al eliminar el evento: {str(e)}")
+            'body': json.dumps(f"Error al consultar el evento: {str(e)}")
         }
     
     except Exception as e:
