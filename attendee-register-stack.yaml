@@ -1,0 +1,200 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: "Stack con los recursos necesarios para gestionar el registro de asistentes a eventos"
+
+Resources:
+  # Cola SQS para recibir mensajes de confirmacion de registros a eventos
+  EventRegisterConfirmationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "EventRegisterConfirmationQueue"
+
+  # Bucket para guardar los json de registro de asistentes a eventos
+  EventRegistersBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: "udem-events-lambda-registers"
+
+  # Tabla para guardar los datos clave de los registros de los asistentes a los eventos
+  EventRegistersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: "event_registers"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: "event_id"
+          AttributeType: "S"
+        - AttributeName: "attendee_id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "event_id"
+          KeyType: HASH # Clave de partición (obligatoria)
+        - AttributeName: "attendee_id"
+          KeyType: RANGE # Clave de clasificación (opcional, pero se usa para ordenar)
+
+  # Tabla para guardar los datos de los asistentes a los eventos
+  AttendeesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: "attendees"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: "id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "id"
+          KeyType: HASH # Clave de partición (obligatoria)
+
+  # Rol para la lambda que gestionara los mensajes de la cola de confirmaciones de registro a eventos
+  ERCQLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: "Allow" # Permite la acción descrita
+          Principal:
+            Service: "lambda.amazonaws.com" # El servicio que asume este rol, en este caso Lambda
+          Action:
+            - "sts:AssumeRole" # Acción que permite a Lambda asumir este rol
+
+      # Aquí definimos las políticas que se adjuntarán al rol, otorgando permisos específicos a Lambda
+      Policies:
+        - PolicyName: "ERCQLambdaExecution" # Nombre de la política personalizada
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow" # Permite la acción descrita
+                Action:
+                  - "logs:CreateLogGroup" # Permite la creación de un grupo de logs en CloudWatch
+                  - "logs:CreateLogStream" # Permite la creación de un stream de logs en CloudWatch
+                  - "logs:PutLogEvents" # Permite escribir eventos de logs en CloudWatch
+                Resource: "*" # Aplica los permisos a todos los recursos descritos anteriormente
+              - Effect: "Allow" # Permite la acción descrita
+                Action:
+                  - "sqs:ReceiveMessage" # Permite recibir los mensajes desde la cola
+                  - "sqs:DeleteMessage" # Permite eliminar mensajes de la cola
+                  - "sqs:GetQueueAttributes" # Permite obtener los atributos de la cola
+                Resource: "*" # Aplica los permisos a todos los recursos descritos anteriormente
+              - Effect: "Allow"
+                Action:
+                  - "s3:PutObject" # Permite escribir objetos en el buckert de S# especificado
+                Resource: !Sub "${EventRegistersBucket.Arn}/*"
+
+  # Politica para autorizar escritura en el bucket a la lambda a la que se le asignara el rol ERCQLambdaExecutionRole
+  EventRegistersBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref EventRegistersBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              AWS: !GetAtt ERCQLambdaExecutionRole.Arn # Referencia al ARN del rol Lambda
+            Action:
+              - "s3:PutObject" # Permitir que la lambda con el rol indicado escriba en el bucket
+            Resource: !Sub "${EventRegistersBucket.Arn}/*"
+
+  # Politica que permite a la lambda con el rol ERCQLambdaExecutionRole acceder a su codigo fuente almacenado en S3
+  ERCQLambdaCodeBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: udem-lambda-code
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: "Allow"
+          Principal:
+            AWS: !GetAtt ERCQLambdaExecutionRole.Arn # Referencia al ARN del rol Lambda
+          Action:
+            - "s3:GetObject"
+          Resource: "arn:aws:s3:::udem-lambda-code/*" # Ruta a los objetos en S3
+
+  # Lambda que gestionara los mensajes de la cola de confirmacion de registro a eventos
+  ERCQLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: "EventRegisterConfirmationQueueLambda"
+      Handler: lambda_function_register_confirmation.lambda_handler # Nombre del archivo y la función handler en Python
+      Runtime: python3.11
+      Environment:
+        Variables:
+          QUEUE_URL: !GetAtt EventRegisterConfirmationQueue.QueueUrl
+          REGISTERS_BUCKET: !Ref EventRegistersBucket
+      Code:
+        S3Bucket: udem-lambda-code # Referencia al bucket creado en CloudFormation
+        S3Key: lambda_function_register_confirmation.zip # Archivo zip subido a S3 que contiene el código
+      MemorySize: 128 # Memoria personalizada para la Lambda (en MB)
+      Timeout: 25 # Timeout personalizado de 25 segundos
+      Role: !GetAtt ERCQLambdaExecutionRole.Arn # Role que la función Lambda asumirá
+
+  # Asociar la cola SQS como trigger para la función Lambda que gestionara sus mensajes
+  ERCQLambdaTrigger:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 1
+      EventSourceArn: !GetAtt EventRegisterConfirmationQueue.Arn
+      FunctionName: !Ref ERCQLambda
+      Enabled: True
+
+  # Rol para la lambda que registrara los asistentes a los eventos
+  AttendeeRegisterLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: "Allow" # Permite la acción descrita
+          Principal:
+            Service: "lambda.amazonaws.com" # El servicio que asume este rol, en este caso Lambda
+          Action:
+            - "sts:AssumeRole" # Acción que permite a Lambda asumir este rol
+
+      # Aquí definimos las políticas que se adjuntarán al rol, otorgando permisos específicos a Lambda
+      Policies:
+        - PolicyName: "AttendeeRegisterLambdaExecution" # Nombre de la política personalizada
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow" # Permite la acción descrita
+                Action:
+                  - "logs:CreateLogGroup" # Permite la creación de un grupo de logs en CloudWatch
+                  - "logs:CreateLogStream" # Permite la creación de un stream de logs en CloudWatch
+                  - "logs:PutLogEvents" # Permite escribir eventos de logs en CloudWatch
+                Resource: "*" # Aplica los permisos a todos los recursos descritos anteriormente
+              - Effect: "Allow" # Permite la acción descrita
+                Action:
+                  - "sqs:SendMessage" # Permite enviar mensajes a la cola
+                  - "sqs:GetQueueAttributes" # Permite obtener los atributos de la cola
+                Resource: "*" # Aplica los permisos a todos los recursos descritos anteriormente
+              - Effect: "Allow" # Permite la acción descrita
+                Action:
+                  - "dynamodb:PutItem"
+                Resource: "*" # Aplica los permisos a todos los recursos descritos anteriormente
+
+  # Lambda que registrara los asistentes a los eventos
+  AttendeeRegisterLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: "AttendeeRegisterLambda"
+      Handler: lambda_function_attendee_register.lambda_handler # Nombre del archivo y la función handler en Python
+      Runtime: python3.11
+      Environment:
+        Variables:
+          ATTENDEES_TABLE_NAME: !Ref AttendeesTable
+          EVENT_REGISTERS_TABLE_NAME: !Ref EventRegistersTable
+          QUEUE_URL: !GetAtt EventRegisterConfirmationQueue.QueueUrl
+      Code:
+        S3Bucket: udem-lambda-code # Referencia al bucket creado en CloudFormation
+        S3Key: lambda_function_attendee_register.zip # Archivo zip subido a S3 que contiene el código
+      MemorySize: 128 # Memoria personalizada para la Lambda (en MB)
+      Timeout: 25 # Timeout personalizado de 25 segundos
+      Role: !GetAtt AttendeeRegisterLambdaExecutionRole.Arn # Role que la función Lambda asumirá
+
+# Output que muestra el nombre del bucket que guarda los json de registro de asistentes a eventos
+Outputs:
+  EventRegistersBucketName:
+    Value: !Ref EventRegistersBucket
+    Export:
+      Name: EventRegistersBucketName
