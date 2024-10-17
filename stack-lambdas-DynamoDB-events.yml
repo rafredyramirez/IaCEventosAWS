@@ -201,28 +201,28 @@ Outputs:
   # Exporta el ARN del Authorizer Lambda Create
   LambdaCreateEventFunctionArn: 
     Description: "ARN de la Lambda principal"
-    Value: !GetAtt lambdaFunctionCreateEvent.Arn
+    Value: !GetAtt CreateEventLambda.Arn
     Export:
       Name: LambdaCreateEventFunctionArn
 
   # Exporta el ARN del Authorizer Lambda Edit
   LambdaEditEventFunctionArn: 
     Description: "ARN de la Lambda principal"
-    Value: !GetAtt lambdaFunctionEditEvent.Arn
+    Value: !GetAtt EditEventLambda.Arn
     Export:
       Name: LambdaEditEventFunctionArn
 
   # Exporta el ARN del Authorizer Lambda Delete
   LambdaDeleteEventFunctionArn: 
     Description: "ARN de la Lambda principal"
-    Value: !GetAtt lambdaFunctionDeleteEvent.Arn
+    Value: !GetAtt DeleteEventLambda.Arn
     Export:
       Name: LambdaDeleteEventFunctionArn
 
   # Exporta el ARN del Authorizer Lambda View
   LambdaViewEventFunctionArn: 
     Description: "ARN de la Lambda principal"
-    Value: !GetAtt lambdaFunctionViewEvent.Arn
+    Value: !GetAtt ViewEventLambda.Arn
     Export:
       Name: LambdaViewEventFunctionArn
 
