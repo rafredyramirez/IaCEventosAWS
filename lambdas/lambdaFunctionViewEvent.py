@@ -8,7 +8,7 @@ from decimal import Decimal
 
 # Inicializa el cliente de DynamoDB
 dynamodb = boto3.resource("dynamodb")
-table_name = "eventos"
+table_name = "events"
 table = dynamodb.Table(table_name)
 
 # Función para convertir Decimals a float para serialización
@@ -19,49 +19,43 @@ def decimal_to_float(obj):
 
 def lambda_handler(event, context):
     try:
-        # Si 'body' no está presente, utiliza el evento directamente
-        if 'body' in event:
-            data = json.loads(event['body'])
+        # Extrae el parámetro 'name_event' desde los query parameters
+        if 'queryStringParameters' in event and event['queryStringParameters']:
+            name_event = event['queryStringParameters'].get('name_event')
         else:
-            # Si estás probando localmente, simplemente asume que el evento ya contiene los datos
-            data = event
-        
-        # Validación básica (verifica que el campo 'id_evento' esté presente)
-        if 'id_evento' not in data:
             return {
                 'statusCode': 400,
-                'body': json.dumps("Falta el campo requerido: id_evento")
+                'body': json.dumps("Falta el parámetro requerido: name_event")
             }
 
-        # Realiza la consulta en DynamoDB utilizando la clave primaria (id_evento)
-        response = table.get_item(
-            Key={
-                'id_evento': data['id_evento']
-            }
+        # Realiza la consulta en DynamoDB utilizando el índice secundario (GSI)
+        response = table.query(
+            IndexName="NameEventIndex",  # Nombre del índice global secundario
+            KeyConditionExpression=boto3.dynamodb.conditions.Key('name_event').eq(name_event)
         )
 
-        # Verifica si el evento existe en la tabla
-        if 'Item' not in response:
+        # Verifica si se encontraron eventos
+        if 'Items' not in response or not response['Items']:
             return {
                 'statusCode': 404,
-                'body': json.dumps(f"Evento con ID {data['id_evento']} no encontrado")
+                'body': json.dumps(f"No se encontraron eventos con nombre '{name_event}'")
             }
 
-        # Convierte la respuesta en JSON, manejando los Decimals
+        # Retorna los eventos encontrados
         return {
             'statusCode': 200,
-            'body': json.dumps(response['Item'], default=decimal_to_float)  # Serializa Decimals a float
+            'body': json.dumps(response['Items'], default=decimal_to_float)
         }
-    
+
     except ClientError as e:
-        # Manejo de errores si hay problemas al acceder a DynamoDB
+        # Manejo de errores de DynamoDB
         return {
             'statusCode': 500,
             'body': json.dumps(f"Error al consultar el evento: {str(e)}")
         }
-    
+
     except Exception as e:
-        # Manejo de cualquier otro error
+        # Manejo de errores generales
         return {
             'statusCode': 500,
             'body': json.dumps(f"Error inesperado: {str(e)}")

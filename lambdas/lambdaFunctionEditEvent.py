@@ -8,7 +8,7 @@ from botocore.exceptions import ClientError
 
 # Inicializa el cliente de DynamoDB
 dynamodb = boto3.resource("dynamodb")
-table_name = "eventos"
+table_name = "events"
 table = dynamodb.Table(table_name)
 
 def lambda_handler(event, context):
@@ -21,7 +21,7 @@ def lambda_handler(event, context):
             data = event
         
         # Validación básica (verifica que ciertos campos existan)
-        required_fields = ['id_evento']
+        required_fields = ['event_id']
         for field in required_fields:
             if field not in data:
                 return {
@@ -32,7 +32,7 @@ def lambda_handler(event, context):
         # Construye los valores que serán actualizados
         update_expression = "SET "
         expression_attribute_values = {}
-        fields_to_update = ['nombre_evento', 'descripcion', 'fecha', 'hora', 'capacidad_max', 'organizador', 'estado', 'lugar_evento']
+        fields_to_update = ['name_event', 'description', 'date', 'time', 'max_capacity', 'organizer', 'status', 'event_location']
         
         # Añade cada campo a la expresión de actualización si está presente en el cuerpo
         for field in fields_to_update:
@@ -46,7 +46,7 @@ def lambda_handler(event, context):
         # Ejecuta la actualización
         response = table.update_item(
             Key={
-                'id_evento': data['id_evento']
+                'event_id': data['event_id']
             },
             UpdateExpression=update_expression,
             ExpressionAttributeValues=expression_attribute_values,
@@ -56,7 +56,7 @@ def lambda_handler(event, context):
         # Respuesta de éxito con los valores actualizados
         return {
             'statusCode': 200,
-            'body': json.dumps(f"Evento {data['id_evento']} actualizado exitosamente: {response['Attributes']}")
+            'body': json.dumps(f"Evento {data['event_id']} actualizado exitosamente: {response['Attributes']}")
         }
     
     except ClientError as e:

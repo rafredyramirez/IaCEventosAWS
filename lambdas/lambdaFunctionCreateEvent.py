@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 
 # Inicializa el cliente de DynamoDB
 dynamodb = boto3.resource("dynamodb")
-table_name = "eventos"
+table_name = "events"
 table = dynamodb.Table(table_name)
 
 def lambda_handler(event, context):
@@ -23,8 +23,8 @@ def lambda_handler(event, context):
             data = event
 
         # Validación básica (verifica que ciertos campos existan)
-        required_fields = ['id_evento', 'nombre_evento', 'descripcion', 'fecha', 'hora', 
-                           'capacidad_max', 'organizador', 'estado', 'lugar_evento']
+        required_fields = ['event_id', 'name_event', 'description', 'date', 'time', 
+                           'max_capacity', 'organizer', 'status', 'event_location']
         for field in required_fields:
             if field not in data:
                 return {
@@ -35,23 +35,22 @@ def lambda_handler(event, context):
         # Inserta el nuevo evento en la tabla de DynamoDB
         table.put_item(
             Item={
-                'id_evento': data['id_evento'],
-                'nombre_evento': data['nombre_evento'],
-                'descripcion': data['descripcion'],
-                'fecha': data['fecha'],  # Formato ISO YYYY-MM-DD
-                'hora': data['hora'],    # Formato HH:MM
-                'capacidad_max': int(data['capacidad_max']),
-                'organizador': data['organizador'],
-                'estado': data['estado'],  # Por ejemplo: "activo", "cancelado"
-                'lugar_evento': data['lugar_evento'],
-                'creado_en': datetime.now().isoformat()  # Fecha y hora de creación
+                'event_id': data['event_id'],
+                'name_event': data['name_event'],
+                'description': data['description'],
+                'date': data['date'],  # Formato ISO YYYY-MM-DD
+                'time': data['time'],    # Formato HH:MM
+                'max_capacity': int(data['max_capacity']),
+                'organizer': data['organizer'],
+                'status': data['status'],  # Por ejemplo: "activo", "cancelado"
+                'event_location': data['event_location']
             }
         )
         
         # Respuesta de éxito
         return {
             'statusCode': 201,
-            'body': json.dumps(f"Evento {data['nombre_evento']} creado con exito")
+            'body': json.dumps(f"Evento {data['name_event']} creado con exito")
         }
     
     except ClientError as e:

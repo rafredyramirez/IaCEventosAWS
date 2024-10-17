@@ -1,0 +1,234 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Resources:
+  # Rol de ejecución para Lambdas
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DynamoDBAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action: 
+                  - s3:GetObject
+                Resource: arn:aws:s3:::source-app-eventos-udm/* #nombre bucket s3 
+              - Effect: Allow # Permite el acceso a la tabla de DynamoDB de eventos
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                Resource: !GetAtt EventsTable.Arn 
+
+  # Tabla DynamoDB  para events
+  EventsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: events
+      AttributeDefinitions:
+        - AttributeName: id_event
+          AttributeType: S  # String
+        - AttributeName: name_event
+          AttributeType: S  # String
+        - AttributeName: description
+          AttributeType: S  # String
+        - AttributeName: date
+          AttributeType: S  # String
+        - AttributeName: time
+          AttributeType: S  # String
+        - AttributeName: max_capacity
+          AttributeType: N  # Number
+        - AttributeName: organizer
+          AttributeType: S  # String
+        - AttributeName: status
+          AttributeType: S  # String
+        - AttributeName: event_location
+          AttributeType: S  # String
+      KeySchema:
+        - AttributeName: id_event
+          KeyType: HASH  # Clave de partición
+      BillingMode: PAY_PER_REQUEST  # Capacidad bajo demanda
+      GlobalSecondaryIndexes:
+        - IndexName: NameEventIndex
+          KeySchema:
+            - AttributeName: name_event
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: OrganizerIndex
+          KeySchema:
+            - AttributeName: organizer
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: StatusIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: EventLocationIndex
+          KeySchema:
+            - AttributeName: event_location
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: DescriptionIndex
+          KeySchema:
+            - AttributeName: description
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: DateIndex
+          KeySchema:
+            - AttributeName: date
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: TimeIndex
+          KeySchema:
+            - AttributeName: time
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: MaxCapacityIndex
+          KeySchema:
+            - AttributeName: max_capacity
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  # Lambda lambdaFunctionCreateEvent
+  CreateEventLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: lambdaFunctionCreateEvent
+      Handler: lambda_handler.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Code:
+        S3Bucket: source-app-eventos-udm
+        S3Key: lambdas/lambdaFunctionCreateEvent.zip
+      Timeout: 10
+
+  # Permisos para que API Gateway invoque la Lambda CreateEvent
+  LambdaCreateEventInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CreateEventLambda.Arn
+      Principal: apigateway.amazonaws.com
+
+  # Lambda lambdaFunctionEditEvent
+  EditEventLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: lambdaFunctionEditEvent
+      Handler: lambda_handler.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Code:
+        S3Bucket: source-app-eventos-udm
+        S3Key: lambdas/lambdaFunctionEditEvent.zip
+      Timeout: 10
+
+  # Permisos para que API Gateway invoque la Lambda EditEvent
+  LambdaEditEventInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt EditEventLambda.Arn
+      Principal: apigateway.amazonaws.com
+
+  # Lambda lambdaFunctionDeleteEvent
+  DeleteEventLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: lambdaFunctionDeleteEvent
+      Handler: lambda_handler.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Code:
+        S3Bucket: source-app-eventos-udm
+        S3Key: lambdas/lambdaFunctionDeleteEvent.zip
+      Timeout: 10
+
+  # Permisos para que API Gateway invoque la Lambda DeleteEvent
+  LambdaDeleteEventInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt DeleteEventLambda.Arn
+      Principal: apigateway.amazonaws.com
+
+  # Lambda lambdaFunctionViewEvent
+  ViewEventLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: lambdaFunctionViewEvent
+      Handler: lambda_handler.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Code:
+        S3Bucket: source-app-eventos-udm
+        S3Key: lambdas/lambdaFunctionViewEvent.zip
+      Timeout: 10
+
+  # Permisos para que API Gateway invoque la Lambda ViewEvent
+  LambdaViewEventInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ViewEventLambda.Arn
+      Principal: apigateway.amazonaws.com            
+
+Outputs:
+  # Exporta el ARN del Authorizer Lambda Create
+  LambdaCreateEventFunctionArn: 
+    Description: "ARN de la Lambda principal"
+    Value: !GetAtt lambdaFunctionCreateEvent.Arn
+    Export:
+      Name: LambdaCreateEventFunctionArn
+
+  # Exporta el ARN del Authorizer Lambda Edit
+  LambdaEditEventFunctionArn: 
+    Description: "ARN de la Lambda principal"
+    Value: !GetAtt lambdaFunctionEditEvent.Arn
+    Export:
+      Name: LambdaEditEventFunctionArn
+
+  # Exporta el ARN del Authorizer Lambda Delete
+  LambdaDeleteEventFunctionArn: 
+    Description: "ARN de la Lambda principal"
+    Value: !GetAtt lambdaFunctionDeleteEvent.Arn
+    Export:
+      Name: LambdaDeleteEventFunctionArn
+
+  # Exporta el ARN del Authorizer Lambda View
+  LambdaViewEventFunctionArn: 
+    Description: "ARN de la Lambda principal"
+    Value: !GetAtt lambdaFunctionViewEvent.Arn
+    Export:
+      Name: LambdaViewEventFunctionArn
+
+  # Exporta el ARN de la tabla DynamoDB
+  EventsTableArn:
+    Description: "ARN de la tabla DynamoDB eventos"
+    Value: !GetAtt EventsTable.Arn
+    Export:
+      Name: EventsTableArn

@@ -7,56 +7,70 @@ from botocore.exceptions import ClientError
 
 # Inicializa el cliente de DynamoDB
 dynamodb = boto3.resource("dynamodb")
-table_name = "eventos"
+table_name = "events"
 table = dynamodb.Table(table_name)
 
 def lambda_handler(event, context):
     try:
-        #######Revisar si toma así la lambda ya que el método es un GET
-        # Si 'body' no está presente, utiliza el evento directamente
+        # Extraer el parámetro 'name_event' desde el body (PUT solicita cuerpo)
         if 'body' in event:
             data = json.loads(event['body'])
         else:
-            # Si estás probando localmente, simplemente asume que el evento ya contiene los datos
-            data = event
-        
-        # Validación básica (verifica que el campo 'id_evento' esté presente)
-        if 'id_evento' not in data:
             return {
                 'statusCode': 400,
-                'body': json.dumps("Falta el campo requerido: id_evento")
+                'body': json.dumps("Falta el cuerpo de la solicitud")
             }
 
-        # Realiza la operación de eliminación en DynamoDB utilizando la clave primaria (id_evento)
-        response = table.delete_item(
-            Key={
-                'id_evento': data['id_evento']
-            },
-            ReturnValues='ALL_OLD'  # Retorna el valor del item antes de eliminarlo, si existe
+        # Validación básica: Verifica si se pasó el campo 'name_event'
+        name_event = data.get('name_event')
+        if not name_event:
+            return {
+                'statusCode': 400,
+                'body': json.dumps("Falta el campo requerido: name_event")
+            }
+
+        # Consulta en el índice secundario global (GSI) NameEventIndex
+        query_response = table.query(
+            IndexName="NameEventIndex",  # Nombre del índice
+            KeyConditionExpression=boto3.dynamodb.conditions.Key('name_event').eq(name_event)
         )
 
-        # Verifica si el evento existía antes de eliminarlo
-        if 'Attributes' not in response:
+        # Verifica si se encontró el evento
+        if 'Items' not in query_response or not query_response['Items']:
             return {
                 'statusCode': 404,
-                'body': json.dumps(f"Evento con ID {data['id_evento']} no encontrado")
+                'body': json.dumps(f"No se encontraron eventos con nombre '{name_event}'")
             }
 
-        # Respuesta de éxito indicando que el evento fue eliminado
+        # Asumimos que solo habrá un evento con ese nombre
+        event_to_delete = query_response['Items'][0]
+        event_id = event_to_delete['id_evento']
+
+        # Elimina el evento utilizando su ID
+        delete_response = table.delete_item(
+            Key={'id_evento': event_id},
+            ReturnValues='ALL_OLD'
+        )
+
+        # Verifica si se eliminó correctamente
+        if 'Attributes' not in delete_response:
+            return {
+                'statusCode': 404,
+                'body': json.dumps(f"Evento con ID {event_id} no encontrado para eliminar")
+            }
+
+        # Respuesta de éxito
         return {
             'statusCode': 200,
-            'body': json.dumps(f"Evento con ID {data['id_evento']} eliminado con éxito")
+            'body': json.dumps(f"Evento '{name_event}' eliminado con éxito")
         }
-    
+
     except ClientError as e:
-        # Manejo de errores si hay problemas al acceder a DynamoDB
         return {
             'statusCode': 500,
             'body': json.dumps(f"Error al eliminar el evento: {str(e)}")
         }
-    
     except Exception as e:
-        # Manejo de cualquier otro error
         return {
             'statusCode': 500,
             'body': json.dumps(f"Error inesperado: {str(e)}")
