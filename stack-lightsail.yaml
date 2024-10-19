@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  
+  MyLightsailInstance:
+    Type: AWS::Lightsail::Instance
+    Properties:
+      BlueprintId: ubuntu_20_04  # Selecciona el blueprint para Django
+      BundleId: micro_1_0
+      InstanceName: MyDjangoInstance
+      AvailabilityZone: us-east-1a  # Reemplaza por la zona de disponibilidad que prefieras
+      UserData: |
+        #!/bin/bash
+        apt-get update
+        apt-get install -y python3-pip
+        pip3 install django
+        # Comandos adicionales para configurar tu instancia Django
+      Networking:
+        # Configuración de la red
+        Ports:
+          - FromPort: 80
+            ToPort: 80
+            Protocol: tcp
+          - FromPort: 443
+            ToPort: 443
+            Protocol: tcp
+      PublicIpAddress: true  # Asegúrate de que la IP pública esté habilitada

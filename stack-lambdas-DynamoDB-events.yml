@@ -118,7 +118,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       FunctionName: lambdaFunctionCreateEvent
-      Handler: lambda_handler.handler
+      Handler: lambdaFunctionCreateEvent.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
       Code:
@@ -127,19 +127,21 @@ Resources:
       Timeout: 10
 
   # Permisos para que API Gateway invoque la Lambda CreateEvent
-  LambdaCreateEventInvokePermission:
-    Type: 'AWS::Lambda::Permission'
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !GetAtt CreateEventLambda.Arn
-      Principal: apigateway.amazonaws.com
+  # LambdaCreateEventInvokePermission:
+  #   Type: 'AWS::Lambda::Permission'
+  #   Properties:
+  #     Action: lambda:InvokeFunction
+  #     FunctionName: !GetAtt CreateEventLambda.Arn
+  #     Principal: apigateway.amazonaws.com
+      # SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
 
   # Lambda lambdaFunctionEditEvent
   EditEventLambda:
     Type: 'AWS::Lambda::Function'
     Properties:
       FunctionName: lambdaFunctionEditEvent
-      Handler: lambda_handler.handler
+      # Handler: lambda_handler.handler
+      Handler: lambdaFunctionEditEvent.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
       Code:
@@ -147,20 +149,21 @@ Resources:
         S3Key: lambdas/lambdaFunctionEditEvent.zip
       Timeout: 10
 
-  # Permisos para que API Gateway invoque la Lambda EditEvent
-  LambdaEditEventInvokePermission:
-    Type: 'AWS::Lambda::Permission'
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !GetAtt EditEventLambda.Arn
-      Principal: apigateway.amazonaws.com
+  # # Permisos para que API Gateway invoque la Lambda EditEvent
+  # LambdaEditEventInvokePermission:
+  #   Type: 'AWS::Lambda::Permission'
+  #   Properties:
+  #     Action: lambda:InvokeFunction
+  #     FunctionName: !GetAtt EditEventLambda.Arn
+  #     Principal: apigateway.amazonaws.com
 
   # Lambda lambdaFunctionDeleteEvent
   DeleteEventLambda:
     Type: 'AWS::Lambda::Function'
     Properties:
       FunctionName: lambdaFunctionDeleteEvent
-      Handler: lambda_handler.handler
+      # Handler: lambda_handler.handler
+      Handler: lambdaFunctionDeleteEvent.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
       Code:
@@ -169,19 +172,20 @@ Resources:
       Timeout: 10
 
   # Permisos para que API Gateway invoque la Lambda DeleteEvent
-  LambdaDeleteEventInvokePermission:
-    Type: 'AWS::Lambda::Permission'
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !GetAtt DeleteEventLambda.Arn
-      Principal: apigateway.amazonaws.com
+  # LambdaDeleteEventInvokePermission:
+  #   Type: 'AWS::Lambda::Permission'
+  #   Properties:
+  #     Action: lambda:InvokeFunction
+  #     FunctionName: !GetAtt DeleteEventLambda.Arn
+  #     Principal: apigateway.amazonaws.com
 
   # Lambda lambdaFunctionViewEvent
   ViewEventLambda:
     Type: 'AWS::Lambda::Function'
     Properties:
       FunctionName: lambdaFunctionViewEvent
-      Handler: lambda_handler.handler
+      # Handler: lambda_handler.handler
+      Handler: lambdaFunctionViewEvent.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
       Code:
@@ -189,39 +193,39 @@ Resources:
         S3Key: lambdas/lambdaFunctionViewEvent.zip
       Timeout: 10
 
-  # Permisos para que API Gateway invoque la Lambda ViewEvent
-  LambdaViewEventInvokePermission:
-    Type: 'AWS::Lambda::Permission'
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !GetAtt ViewEventLambda.Arn
-      Principal: apigateway.amazonaws.com            
+  # # Permisos para que API Gateway invoque la Lambda ViewEvent
+  # LambdaViewEventInvokePermission:
+  #   Type: 'AWS::Lambda::Permission'
+  #   Properties:
+  #     Action: lambda:InvokeFunction
+  #     FunctionName: !GetAtt ViewEventLambda.Arn
+  #     Principal: apigateway.amazonaws.com            
 
 Outputs:
   # Exporta el ARN del Authorizer Lambda Create
   LambdaCreateEventFunctionArn: 
-    Description: "ARN de la Lambda principal"
+    Description: "ARN de la Lambda Create Events"
     Value: !GetAtt CreateEventLambda.Arn
     Export:
       Name: LambdaCreateEventFunctionArn
 
   # Exporta el ARN del Authorizer Lambda Edit
   LambdaEditEventFunctionArn: 
-    Description: "ARN de la Lambda principal"
+    Description: "ARN de la Lambda Edit Events"
     Value: !GetAtt EditEventLambda.Arn
     Export:
       Name: LambdaEditEventFunctionArn
 
   # Exporta el ARN del Authorizer Lambda Delete
   LambdaDeleteEventFunctionArn: 
-    Description: "ARN de la Lambda principal"
+    Description: "ARN de la Lambda Delete Events"
     Value: !GetAtt DeleteEventLambda.Arn
     Export:
       Name: LambdaDeleteEventFunctionArn
 
   # Exporta el ARN del Authorizer Lambda View
   LambdaViewEventFunctionArn: 
-    Description: "ARN de la Lambda principal"
+    Description: "ARN de la Lambda View Events"
     Value: !GetAtt ViewEventLambda.Arn
     Export:
       Name: LambdaViewEventFunctionArn
