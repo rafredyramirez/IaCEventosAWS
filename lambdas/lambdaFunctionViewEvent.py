@@ -19,33 +19,41 @@ def decimal_to_float(obj):
 
 def lambda_handler(event, context):
     try:
-        # Extrae el parámetro 'name_event' desde los query parameters
-        if 'queryStringParameters' in event and event['queryStringParameters']:
-            name_event = event['queryStringParameters'].get('name_event')
+        # Verificar si hay query parameters (event_id)
+        query_params = event.get('queryStringParameters', {})
+
+        if query_params and 'event_id' in query_params:
+            # Obtener evento por event_id
+            event_id = query_params['event_id']
+            response = table.get_item(Key={'event_id': event_id})
+
+            if 'Item' not in response:
+                return {
+                    'statusCode': 404,
+                    'body': json.dumps(f"No se encontró el evento con ID '{event_id}'")
+                }
+
+            # Retornar el evento encontrado
+            return {
+                'statusCode': 200,
+                'body': json.dumps(response['Item'], default=decimal_to_float)
+            }
+
         else:
+            # Obtener todos los eventos
+            response = table.scan()
+
+            if 'Items' not in response or not response['Items']:
+                return {
+                    'statusCode': 404,
+                    'body': json.dumps("No se encontraron eventos.")
+                }
+
+            # Retornar todos los eventos
             return {
-                'statusCode': 400,
-                'body': json.dumps("Falta el parámetro requerido: name_event")
+                'statusCode': 200,
+                'body': json.dumps(response['Items'], default=decimal_to_float)
             }
-
-        # Realiza la consulta en DynamoDB utilizando el índice secundario (GSI)
-        response = table.query(
-            IndexName="NameEventIndex",  # Nombre del índice global secundario
-            KeyConditionExpression=boto3.dynamodb.conditions.Key('name_event').eq(name_event)
-        )
-
-        # Verifica si se encontraron eventos
-        if 'Items' not in response or not response['Items']:
-            return {
-                'statusCode': 404,
-                'body': json.dumps(f"No se encontraron eventos con nombre '{name_event}'")
-            }
-
-        # Retorna los eventos encontrados
-        return {
-            'statusCode': 200,
-            'body': json.dumps(response['Items'], default=decimal_to_float)
-        }
 
     except ClientError as e:
         # Manejo de errores de DynamoDB

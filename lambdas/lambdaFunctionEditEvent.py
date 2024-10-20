@@ -32,7 +32,7 @@ def lambda_handler(event, context):
         # Construye los valores que serán actualizados
         update_expression = "SET "
         expression_attribute_values = {}
-        fields_to_update = ['name_event', 'description', 'date', 'time', 'max_capacity', 'organizer', 'status', 'event_location']
+        fields_to_update = ['name_event', 'description', 'event_date', 'event_time', 'max_capacity', 'organizer', 'event_status', 'event_location']
         
         # Añade cada campo a la expresión de actualización si está presente en el cuerpo
         for field in fields_to_update:

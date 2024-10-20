@@ -41,26 +41,26 @@ Resources:
     Properties:
       TableName: events
       AttributeDefinitions:
-        - AttributeName: id_event
+        - AttributeName: event_id
           AttributeType: S  # String
         - AttributeName: name_event
           AttributeType: S  # String
         - AttributeName: description
           AttributeType: S  # String
-        - AttributeName: date
+        - AttributeName: event_date
           AttributeType: S  # String
-        - AttributeName: time
+        - AttributeName: event_time
           AttributeType: S  # String
         - AttributeName: max_capacity
           AttributeType: N  # Number
         - AttributeName: organizer
           AttributeType: S  # String
-        - AttributeName: status
+        - AttributeName: event_status
           AttributeType: S  # String
         - AttributeName: event_location
           AttributeType: S  # String
       KeySchema:
-        - AttributeName: id_event
+        - AttributeName: event_id
           KeyType: HASH  # Clave de partición
       BillingMode: PAY_PER_REQUEST  # Capacidad bajo demanda
       GlobalSecondaryIndexes:
@@ -76,9 +76,9 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: ALL
-        - IndexName: StatusIndex
+        - IndexName: EventStatusIndex
           KeySchema:
-            - AttributeName: status
+            - AttributeName: event_status
               KeyType: HASH
           Projection:
             ProjectionType: ALL
@@ -94,15 +94,15 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: ALL
-        - IndexName: DateIndex
+        - IndexName: EventDateIndex
           KeySchema:
-            - AttributeName: date
+            - AttributeName: event_date
               KeyType: HASH
           Projection:
             ProjectionType: ALL
-        - IndexName: TimeIndex
+        - IndexName: EventTimeIndex
           KeySchema:
-            - AttributeName: time
+            - AttributeName: event_time
               KeyType: HASH
           Projection:
             ProjectionType: ALL

@@ -23,8 +23,8 @@ def lambda_handler(event, context):
             data = event
 
         # Validación básica (verifica que ciertos campos existan)
-        required_fields = ['event_id', 'name_event', 'description', 'date', 'time', 
-                           'max_capacity', 'organizer', 'status', 'event_location']
+        required_fields = ['event_id', 'name_event', 'description', 'event_date', 'event_time', 
+                           'max_capacity', 'organizer', 'event_status', 'event_location']
         for field in required_fields:
             if field not in data:
                 return {
@@ -38,11 +38,11 @@ def lambda_handler(event, context):
                 'event_id': data['event_id'],
                 'name_event': data['name_event'],
                 'description': data['description'],
-                'date': data['date'],  # Formato ISO YYYY-MM-DD
-                'time': data['time'],    # Formato HH:MM
+                'event_date': data['event_date'],  # Formato ISO YYYY-MM-DD
+                'event_time': data['event_time'],    # Formato HH:MM
                 'max_capacity': int(data['max_capacity']),
                 'organizer': data['organizer'],
-                'status': data['status'],  # Por ejemplo: "activo", "cancelado"
+                'event_status': data['event_status'],  # Por ejemplo: "ACTIVO", "CANCELADO"
                 'event_location': data['event_location']
             }
         )
