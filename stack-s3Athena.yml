@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Stack for S3, Glue Data Catalog, and Athena query flow
+
+Resources:
+  # Crear bucket de S3
+  DataS3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties: 
+      BucketName: "udem-events-lambda-registers"
+
+  # Crear un Glue Data Catalog Database
+  GlueDataCatalogDatabase:
+    Type: 'AWS::Glue::Database'
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: 'udem-events-glue-data-catalog-db'
+
+  # Crear una tabla en Glue (esta parte es opcional, pero puede ser útil para tener una tabla lista)
+  GlueDataCatalogTable:
+    Type: 'AWS::Glue::Table'
+    DependsOn: GlueDataCatalogDatabase
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: !Ref GlueDataCatalogDatabase
+      TableInput:
+        Name: 'mi_tabla_glue'
+        TableType: 'EXTERNAL_TABLE'
+        StorageDescriptor:
+          Columns:
+            - Name: 'id'
+              Type: 'int'
+            - Name: 'nombre'
+              Type: 'string'
+          #Location: !Sub 's3://${DataS3Bucket}/jgomez/datos/'
+          InputFormat: 'org.apache.hadoop.mapred.TextInputFormat'
+          OutputFormat: 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+          SerdeInfo:
+            SerializationLibrary: 'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe'
+            Parameters:
+              'field.delim': ','
+
+  # Configuración de Athena (donde se almacenarán los resultados de las consultas en otro bucket S3)
+  AthenaQueryResultsBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties: 
+      BucketName: !Sub 'athena-resultados-${AWS::AccountId}-${AWS::Region}'
+
+  AthenaWorkGroup:
+    Type: 'AWS::Athena::WorkGroup'
+    Properties:
+      #Name: 'mi_grupo_de_trabajo'
+      WorkGroupConfiguration:
+        ResultConfiguration:
+          OutputLocation: !Sub 's3://${AthenaQueryResultsBucket}/resultados/'
+
+Outputs:
+  S3BucketName:
+    Description: 'Nombre del bucket de S3 para los datos'
+    Value: !Ref DataS3Bucket
+
+  GlueDatabaseName:
+    Description: 'Nombre de la base de datos en Glue Data Catalog'
+    Value: !Ref GlueDataCatalogDatabase
+
+  AthenaQueryResults:
+    Description: 'Ubicación del bucket donde Athena almacenará los resultados'
+    Value: !Ref AthenaQueryResultsBucket
