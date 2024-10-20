@@ -1,3 +1,4 @@
+
 AWSTemplateFormatVersion: '2010-09-09'
 
 Resources:
@@ -33,7 +34,11 @@ Resources:
                   - dynamodb:PutItem
                   - dynamodb:UpdateItem
                   - dynamodb:DeleteItem
-                Resource: !GetAtt EventsTable.Arn 
+                Resource: !GetAtt EventsTable.Arn
+              - Effect: Allow
+                Action:
+                  - dynamodb:Scan
+                Resource: !GetAtt EventsTable.Arn
 
   # Tabla DynamoDB  para events
   EventsTable:
@@ -126,21 +131,11 @@ Resources:
         S3Key: lambdas/lambdaFunctionCreateEvent.zip
       Timeout: 10
 
-  # Permisos para que API Gateway invoque la Lambda CreateEvent
-  # LambdaCreateEventInvokePermission:
-  #   Type: 'AWS::Lambda::Permission'
-  #   Properties:
-  #     Action: lambda:InvokeFunction
-  #     FunctionName: !GetAtt CreateEventLambda.Arn
-  #     Principal: apigateway.amazonaws.com
-      # SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
-
   # Lambda lambdaFunctionEditEvent
   EditEventLambda:
     Type: 'AWS::Lambda::Function'
     Properties:
       FunctionName: lambdaFunctionEditEvent
-      # Handler: lambda_handler.handler
       Handler: lambdaFunctionEditEvent.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
@@ -149,20 +144,11 @@ Resources:
         S3Key: lambdas/lambdaFunctionEditEvent.zip
       Timeout: 10
 
-  # # Permisos para que API Gateway invoque la Lambda EditEvent
-  # LambdaEditEventInvokePermission:
-  #   Type: 'AWS::Lambda::Permission'
-  #   Properties:
-  #     Action: lambda:InvokeFunction
-  #     FunctionName: !GetAtt EditEventLambda.Arn
-  #     Principal: apigateway.amazonaws.com
-
   # Lambda lambdaFunctionDeleteEvent
   DeleteEventLambda:
     Type: 'AWS::Lambda::Function'
     Properties:
       FunctionName: lambdaFunctionDeleteEvent
-      # Handler: lambda_handler.handler
       Handler: lambdaFunctionDeleteEvent.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
@@ -171,20 +157,11 @@ Resources:
         S3Key: lambdas/lambdaFunctionDeleteEvent.zip
       Timeout: 10
 
-  # Permisos para que API Gateway invoque la Lambda DeleteEvent
-  # LambdaDeleteEventInvokePermission:
-  #   Type: 'AWS::Lambda::Permission'
-  #   Properties:
-  #     Action: lambda:InvokeFunction
-  #     FunctionName: !GetAtt DeleteEventLambda.Arn
-  #     Principal: apigateway.amazonaws.com
-
   # Lambda lambdaFunctionViewEvent
   ViewEventLambda:
     Type: 'AWS::Lambda::Function'
     Properties:
       FunctionName: lambdaFunctionViewEvent
-      # Handler: lambda_handler.handler
       Handler: lambdaFunctionViewEvent.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
@@ -192,14 +169,6 @@ Resources:
         S3Bucket: source-app-eventos-udm
         S3Key: lambdas/lambdaFunctionViewEvent.zip
       Timeout: 10
-
-  # # Permisos para que API Gateway invoque la Lambda ViewEvent
-  # LambdaViewEventInvokePermission:
-  #   Type: 'AWS::Lambda::Permission'
-  #   Properties:
-  #     Action: lambda:InvokeFunction
-  #     FunctionName: !GetAtt ViewEventLambda.Arn
-  #     Principal: apigateway.amazonaws.com            
 
 Outputs:
   # Exporta el ARN del Authorizer Lambda Create

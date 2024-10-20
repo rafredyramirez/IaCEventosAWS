@@ -46,19 +46,6 @@ Resources:
         S3Key: lambdas/authorizer.zip
       Timeout: 5
 
-  # # Lambda principal
-  # HelloLambda:
-  #   Type: 'AWS::Lambda::Function'
-  #   Properties:
-  #     FunctionName: HelloLambda
-  #     Handler: hello.lambda_handler
-  #     Role: !GetAtt LambdaExecutionRole.Arn
-  #     Runtime: python3.9
-  #     Code:
-  #       S3Bucket: source-app-eventos-udm
-  #       S3Key: lambdas/hello.zip
-  #     Timeout: 10
-
   # API Gateway
   ApiGatewayRestApi:
     Type: 'AWS::ApiGateway::RestApi'
@@ -218,6 +205,16 @@ Resources:
 
   # Permisos para que API Gateway invoque la Lambda principal
   LambdaViewEventInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !ImportValue LambdaViewEventFunctionArn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
+
+  # Permisos para que API Gateway invoque la Lambda principal
+  LambdaListEventInvokePermission:
     Type: 'AWS::Lambda::Permission'
     Properties:
       Action: lambda:InvokeFunction
