@@ -2,7 +2,36 @@ AWSTemplateFormatVersion: "2010-09-09"
 
 Description: "Stack con los recursos necesarios para gestionar el registro de asistentes a eventos"
 
+Parameters:
+  SourceCodeBucketName:
+    Type: String
+    Default: udem-lambda-code
+    Description: "Nombre del bucket donde se suben los zip con el codigo de las funciones lambda"
+
+  EventsTableArn:
+    Type: String
+
+  EventsTableName:
+    Type: String
+
 Resources:
+  # Politica que permite a las funciones lambda acceder a su codigo fuente almacenado en S3
+  LambdasSourceCodeBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SourceCodeBucketName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: "Allow"
+          Principal:
+            AWS:
+              - !GetAtt ERCQLambdaExecutionRole.Arn # Referencia al ARN del rol Lambda
+              - !GetAtt AttendeeRegisterLambdaExecutionRole.Arn # Referencia al ARN del rol Lambda
+          Action:
+            - "s3:GetObject"
+          Resource: !Sub "arn:aws:s3:::${SourceCodeBucketName}/*" # Ruta a los objetos en S3
+
   # Cola SQS para recibir mensajes de confirmacion de registros a eventos
   EventRegisterConfirmationQueue:
     Type: AWS::SQS::Queue
@@ -22,28 +51,74 @@ Resources:
       TableName: "event_registers"
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: "event_id"
-          AttributeType: "S"
-        - AttributeName: "attendee_id"
-          AttributeType: "S"
+        - AttributeName: registration_id
+          AttributeType: S
+        - AttributeName: event_id
+          AttributeType: S
+        - AttributeName: attendee_id
+          AttributeType: S
+        - AttributeName: registration_date
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
       KeySchema:
-        - AttributeName: "event_id"
-          KeyType: HASH # Clave de partición (obligatoria)
-        - AttributeName: "attendee_id"
-          KeyType: RANGE # Clave de clasificación (opcional, pero se usa para ordenar)
+        - AttributeName: registration_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: EventIDIndex
+          KeySchema:
+            - AttributeName: event_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: AttendeeIDIndex
+          KeySchema:
+            - AttributeName: attendee_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: RegistrationDatendex
+          KeySchema:
+            - AttributeName: registration_date
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: StatusIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
 
   # Tabla para guardar los datos de los asistentes a los eventos
   AttendeesTable:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: "attendees"
-      BillingMode: PAY_PER_REQUEST
+      BillingMode: PAY_PER_REQUEST # Modo On-Demand
       AttributeDefinitions:
-        - AttributeName: "id"
-          AttributeType: "S"
+        - AttributeName: attendee_id
+          AttributeType: S
+        - AttributeName: attendee_name
+          AttributeType: S
+        - AttributeName: attendee_email
+          AttributeType: S
       KeySchema:
-        - AttributeName: "id"
-          KeyType: HASH # Clave de partición (obligatoria)
+        - AttributeName: attendee_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: AttendeeNameIndex
+          KeySchema:
+            - AttributeName: attendee_name
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: AttendeeEmailIndex
+          KeySchema:
+            - AttributeName: attendee_email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
 
   # Rol para la lambda que gestionara los mensajes de la cola de confirmaciones de registro a eventos
   ERCQLambdaExecutionRole:
@@ -75,11 +150,17 @@ Resources:
                   - "sqs:ReceiveMessage" # Permite recibir los mensajes desde la cola
                   - "sqs:DeleteMessage" # Permite eliminar mensajes de la cola
                   - "sqs:GetQueueAttributes" # Permite obtener los atributos de la cola
-                Resource: "*" # Aplica los permisos a todos los recursos descritos anteriormente
+                Resource: !GetAtt EventRegisterConfirmationQueue.Arn
               - Effect: "Allow"
                 Action:
                   - "s3:PutObject" # Permite escribir objetos en el buckert de S# especificado
                 Resource: !Sub "${EventRegistersBucket.Arn}/*"
+              - Effect: "Allow"
+                Action:
+                  - "ses:SendEmail"
+                  - "ses:SendTemplatedEmail" # Permitir el uso de plantillas en SES
+                  - "ses:SendRawEmail"
+                Resource: "*" # Permitir acceso a cualquier identidad verificada en SES
 
   # Politica para autorizar escritura en el bucket a la lambda a la que se le asignara el rol ERCQLambdaExecutionRole
   EventRegistersBucketPolicy:
@@ -96,20 +177,41 @@ Resources:
               - "s3:PutObject" # Permitir que la lambda con el rol indicado escriba en el bucket
             Resource: !Sub "${EventRegistersBucket.Arn}/*"
 
-  # Politica que permite a la lambda con el rol ERCQLambdaExecutionRole acceder a su codigo fuente almacenado en S3
-  ERCQLambdaCodeBucketPolicy:
-    Type: AWS::S3::BucketPolicy
+  # Crear una plantilla de correo electrónico en SES
+  EmailTemplate:
+    Type: "AWS::SES::Template"
     Properties:
-      Bucket: udem-lambda-code
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          Effect: "Allow"
-          Principal:
-            AWS: !GetAtt ERCQLambdaExecutionRole.Arn # Referencia al ARN del rol Lambda
-          Action:
-            - "s3:GetObject"
-          Resource: "arn:aws:s3:::udem-lambda-code/*" # Ruta a los objetos en S3
+      Template:
+        TemplateName: "EventRegisterConfirmationTemplate" # Nombre de la plantilla SES
+        SubjectPart: "Confirmación de Registro para {{name_event}}" # Asunto del correo
+        TextPart: | # Parte del correo en formato texto plano
+          Hola {{attendee_name}},
+
+          Gracias por registrarte para el evento {{name_event}} que tendrá lugar el {{event_date}}.
+
+          Saludos,
+          El equipo de {{organizer}}
+        HtmlPart: | # Parte del correo en formato HTML
+          <html>
+          <body>
+            <h1>Confirmación de Registro</h1>
+            <p>Hola {{attendee_name}},</p>
+            <p>Gracias por registrarte para el evento <strong>{{name_event}}</strong> que tendrá lugar el <strong>{{event_date}}</strong>.</p>
+            <p>Saludos,<br/>El equipo de {{organizer}}</p>
+          </body>
+          </html>
+
+  # Verificar una dirección de correo en SES para ser usada como origen en los correos
+  SESVerifiedSenderEmailIdentity:
+    Type: "AWS::SES::EmailIdentity"
+    Properties:
+      EmailIdentity: "correo.notificaciones.fabv@gmail.com" # Correo que será verificado manualmente en SES para enviar correos
+
+  # Verificar una dirección de correo en SES para ser usada como destino en los correos (por ser una PoC)
+  SESVerifiedDestinationEmailIdentity:
+    Type: "AWS::SES::EmailIdentity"
+    Properties:
+      EmailIdentity: "faberrocalv@gmail.com" # Correo que será verificado manualmente en SES para recibir correos
 
   # Lambda que gestionara los mensajes de la cola de confirmacion de registro a eventos
   ERCQLambda:
@@ -117,13 +219,15 @@ Resources:
     Properties:
       FunctionName: "EventRegisterConfirmationQueueLambda"
       Handler: lambda_function_register_confirmation.lambda_handler # Nombre del archivo y la función handler en Python
-      Runtime: python3.11
+      Runtime: python3.9
       Environment:
         Variables:
           QUEUE_URL: !GetAtt EventRegisterConfirmationQueue.QueueUrl
           REGISTERS_BUCKET: !Ref EventRegistersBucket
+          SENDER_EMAIL: !Ref SESVerifiedSenderEmailIdentity # Dirección de correo verificada en SES
+          EMAIL_TEMPLATE: !Ref EmailTemplate
       Code:
-        S3Bucket: udem-lambda-code # Referencia al bucket creado en CloudFormation
+        S3Bucket: !Ref SourceCodeBucketName # Referencia al bucket creado en CloudFormation
         S3Key: lambda_function_register_confirmation.zip # Archivo zip subido a S3 que contiene el código
       MemorySize: 128 # Memoria personalizada para la Lambda (en MB)
       Timeout: 25 # Timeout personalizado de 25 segundos
@@ -133,7 +237,7 @@ Resources:
   ERCQLambdaTrigger:
     Type: AWS::Lambda::EventSourceMapping
     Properties:
-      BatchSize: 1
+      BatchSize: 10
       EventSourceArn: !GetAtt EventRegisterConfirmationQueue.Arn
       FunctionName: !Ref ERCQLambda
       Enabled: True
@@ -167,11 +271,26 @@ Resources:
                 Action:
                   - "sqs:SendMessage" # Permite enviar mensajes a la cola
                   - "sqs:GetQueueAttributes" # Permite obtener los atributos de la cola
-                Resource: "*" # Aplica los permisos a todos los recursos descritos anteriormente
+                Resource: !GetAtt EventRegisterConfirmationQueue.Arn
               - Effect: "Allow" # Permite la acción descrita
                 Action:
                   - "dynamodb:PutItem"
-                Resource: "*" # Aplica los permisos a todos los recursos descritos anteriormente
+                Resource: !GetAtt AttendeesTable.Arn
+              - Effect: "Allow" # Permite la acción descrita
+                Action:
+                  - "dynamodb:Query"
+                Resource:
+                  - !GetAtt EventRegistersTable.Arn
+                  - !Sub "${EventRegistersTable.Arn}/index/EventIDIndex"
+              - Effect: Allow
+                Action:
+                  - "dynamodb:PutItem"
+                Resource:
+                  - !GetAtt EventRegistersTable.Arn
+              - Effect: "Allow"
+                Action:
+                  - "dynamodb:GetItem"
+                Resource: !ImportValue EventsTableArn
 
   # Lambda que registrara los asistentes a los eventos
   AttendeeRegisterLambda:
@@ -179,14 +298,15 @@ Resources:
     Properties:
       FunctionName: "AttendeeRegisterLambda"
       Handler: lambda_function_attendee_register.lambda_handler # Nombre del archivo y la función handler en Python
-      Runtime: python3.11
+      Runtime: python3.9
       Environment:
         Variables:
           ATTENDEES_TABLE_NAME: !Ref AttendeesTable
           EVENT_REGISTERS_TABLE_NAME: !Ref EventRegistersTable
           QUEUE_URL: !GetAtt EventRegisterConfirmationQueue.QueueUrl
+          EVENTS_TABLE_NAME: !ImportValue EventsTableName
       Code:
-        S3Bucket: udem-lambda-code # Referencia al bucket creado en CloudFormation
+        S3Bucket: !Ref SourceCodeBucketName # Referencia al bucket creado en CloudFormation
         S3Key: lambda_function_attendee_register.zip # Archivo zip subido a S3 que contiene el código
       MemorySize: 128 # Memoria personalizada para la Lambda (en MB)
       Timeout: 25 # Timeout personalizado de 25 segundos
