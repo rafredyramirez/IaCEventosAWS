@@ -1,10 +1,7 @@
 import json
 import boto3
-import os
 from botocore.exceptions import ClientError
 from decimal import Decimal
-
-# Lambda que permite consultar un evento
 
 # Inicializa el cliente de DynamoDB
 dynamodb = boto3.resource("dynamodb")
@@ -19,51 +16,69 @@ def decimal_to_float(obj):
 
 def lambda_handler(event, context):
     try:
-        # Verificar si hay query parameters (event_id)
+        # Verificar si hay query parameters
         query_params = event.get('queryStringParameters', {})
 
-        if query_params and 'event_id' in query_params:
-            # Obtener evento por event_id
-            event_id = query_params['event_id']
-            response = table.get_item(Key={'event_id': event_id})
+        if query_params:
+            # Consultar por 'event_id' si está presente
+            if 'event_id' in query_params:
+                event_id = query_params['event_id']
+                response = table.get_item(Key={'event_id': event_id})
 
-            if 'Item' not in response:
+                if 'Item' not in response:
+                    return {
+                        'statusCode': 404,
+                        'body': json.dumps(f"No se encontró el evento con ID '{event_id}'")
+                    }
+
+                # Retornar el evento encontrado
                 return {
-                    'statusCode': 404,
-                    'body': json.dumps(f"No se encontró el evento con ID '{event_id}'")
+                    'statusCode': 200,
+                    'body': json.dumps(response['Item'], default=decimal_to_float)
                 }
 
-            # Retornar el evento encontrado
-            return {
-                'statusCode': 200,
-                'body': json.dumps(response['Item'], default=decimal_to_float)
-            }
+            # Consultar por 'event_status' usando el GSI con el EventStatusIndex
+            elif 'event_status' in query_params:
+                event_status = query_params['event_status']
+                response = table.query(
+                    IndexName="EventStatusIndex", 
+                    KeyConditionExpression=boto3.dynamodb.conditions.Key('event_status').eq(event_status)
+                )
 
-        else:
-            # Obtener todos los eventos
-            response = table.scan()
+                if 'Items' not in response or not response['Items']:
+                    return {
+                        'statusCode': 404,
+                        'body': json.dumps(f"No se encontraron eventos con status '{event_status}'")
+                    }
 
-            if 'Items' not in response or not response['Items']:
+                # Retornar los eventos encontrados
                 return {
-                    'statusCode': 404,
-                    'body': json.dumps("No se encontraron eventos.")
+                    'statusCode': 200,
+                    'body': json.dumps(response['Items'], default=decimal_to_float)
                 }
 
-            # Retornar todos los eventos
+        # Si no hay parámetros, escanear todos los eventos
+        response = table.scan()
+
+        if 'Items' not in response or not response['Items']:
             return {
-                'statusCode': 200,
-                'body': json.dumps(response['Items'], default=decimal_to_float)
+                'statusCode': 404,
+                'body': json.dumps("No se encontraron eventos.")
             }
+
+        # Retornar todos los eventos
+        return {
+            'statusCode': 200,
+            'body': json.dumps(response['Items'], default=decimal_to_float)
+        }
 
     except ClientError as e:
-        # Manejo de errores de DynamoDB
         return {
             'statusCode': 500,
             'body': json.dumps(f"Error al consultar el evento: {str(e)}")
         }
 
     except Exception as e:
-        # Manejo de errores generales
         return {
             'statusCode': 500,
             'body': json.dumps(f"Error inesperado: {str(e)}")
