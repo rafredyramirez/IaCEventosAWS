@@ -312,8 +312,14 @@ Resources:
       Timeout: 25 # Timeout personalizado de 25 segundos
       Role: !GetAtt AttendeeRegisterLambdaExecutionRole.Arn # Role que la función Lambda asumirá
 
-# Output que muestra el nombre del bucket que guarda los json de registro de asistentes a eventos
 Outputs:
+  # Exporta el ARN de la lambda AttendeeRegister
+  AttendeeRegisterLambdaArn:
+    Value: !GetAtt AttendeeRegisterLambda.Arn
+    Export:
+      Name: AttendeeRegisterLambdaArn
+
+  # Output que muestra el nombre del bucket que guarda los json de registro de asistentes a eventos
   EventRegistersBucketName:
     Value: !Ref EventRegistersBucket
     Export:

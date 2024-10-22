@@ -1,0 +1,66 @@
+// CloudFormation
+
+//Comandos para desplieguar la plantilla de cloudformation lambda-cloudformation.yml
+//El parámetro CAPABILITY_NAMED_IAM es necesario para permitir que la plantilla cree roles de IAM (el rol que Lambda necesita).
+//Ubicar correctamente el path del archivo yml
+
+//Parametros usados en los commandos
+//    --stack-name nombre que le dará al stack, para el ejercicio se usa HelloLambdaStack
+//    --template-body file://ruta y nombre del archivo, para el ejercicio se usa file://lambda-cloudformation.yml, 
+//    --capabilities CAPABILITY_NAMED_IAM, El parámetro CAPABILITY_NAMED_IAM es necesario para permitir que la plantilla cree roles de IAM (el rol que Lambda necesita).
+//    --region us-west-2 codigo de la region donde se crearan los recursos de AWS
+
+//comando para desplegar el stack, si ejecuta dos veces este comando, la segunda vez saldra un error
+aws cloudformation create-stack \
+    --stack-name HelloLambdaStack \
+    --template-body file://lambda-cloudformation.yml \
+    --capabilities CAPABILITY_NAMED_IAM \
+    --region us-west-2 
+
+
+//comando para actualizar el stack, si agrega o modifica algun recurso debe usar este comando
+    aws cloudformation update-stack \
+  --stack-name HelloLambdaStack \
+  --template-body file://lambda-cloudformation.yml \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --region us-west-2
+
+// si quiere comparar el estado actual de la infraestructura con los cambios realizados en el archivo yml, pueder usar un change-set
+// Un Change Set en AWS CloudFormation es un mecanismo que te permite previsualizar los cambios que se harán a 
+// tu stack antes de aplicarlos. Funciona generando un resumen de las modificaciones que se harían al actualizar un stack, 
+// lo que te permite verificar los impactos de los cambios sin comprometer el estado actual de la infraestructura.
+// los comandos de change-set usan los parametros anteriores ademas del parametro --change-set-name
+
+// Flujo de ejecucion de un change-set
+// Crear el change-set
+// Revisar el change-set, ver las diferencias 
+// Ejecutar el change-set, aplicar los cambios y alterar la infraestructura
+// o Descartar el change-set, no se aplican los cambios y se descarta el change-set
+
+// Comando para change-set
+// Crear change set
+aws cloudformation create-change-set \
+  --stack-name HelloLambdaStack \
+  --template-body file://lambda-cloudformation.yml \
+  --change-set-name MiCambioDeStack \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --region us-west-2
+
+// Revisar el change-set, revisar los cambios
+  aws cloudformation describe-change-set \
+  --change-set-name MiCambioDeStack \
+  --stack-name HelloLambdaStack \
+  --region us-west-2
+
+// Ejecutar el change set, en caso de querer aplicar los cambios en la infraestructura
+    aws cloudformation execute-change-set \
+  --change-set-name MiCambioDeStack \
+  --stack-name HelloLambdaStack \
+  --region us-west-2
+
+// Descartar el change-set en caso de no querer implementar los cambios
+  aws cloudformation delete-change-set \
+  --change-set-name MiCambioDeStack \
+  --stack-name HelloLambdaStack \
+  --region us-west-2
+
