@@ -5,8 +5,23 @@ Description: "Stack con los recursos necesarios para gestionar el registro de as
 Parameters:
   SourceCodeBucketName:
     Type: String
-    Default: source-app-eventos-udm
+    Default: ""
     Description: "Nombre del bucket donde se suben los zip con el codigo de las funciones lambda"
+
+  EventRegistersBucketName:
+    Type: String
+    Default: ""
+    Description: "Nombre del bucket para guardar los json de registro de asistentes a eventos"
+
+  SESVerifiedSenderEmailIdentityName:
+    Type: String
+    Default: ""
+    Description: "Correo que será verificado manualmente en SES para enviar correos"
+
+  SESVerifiedDestinationEmailIdentityName:
+    Type: String
+    Default: ""
+    Description: "Correo que será verificado manualmente en SES para recibir correos"
 
   EventsTableArn:
     Type: String
@@ -42,7 +57,7 @@ Resources:
   EventRegistersBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: "udem-events-lambda-registers"
+      BucketName: !Ref EventRegistersBucketName
 
   # Tabla para guardar los datos clave de los registros de los asistentes a los eventos
   EventRegistersTable:
@@ -205,13 +220,13 @@ Resources:
   SESVerifiedSenderEmailIdentity:
     Type: "AWS::SES::EmailIdentity"
     Properties:
-      EmailIdentity: "correo.notificaciones.fabv@gmail.com" # Correo que será verificado manualmente en SES para enviar correos
+      EmailIdentity: !Ref SESVerifiedSenderEmailIdentityName
 
   # Verificar una dirección de correo en SES para ser usada como destino en los correos (por ser una PoC)
   SESVerifiedDestinationEmailIdentity:
     Type: "AWS::SES::EmailIdentity"
     Properties:
-      EmailIdentity: "faberrocalv@gmail.com" # Correo que será verificado manualmente en SES para recibir correos
+      EmailIdentity: !Ref SESVerifiedDestinationEmailIdentityName
 
   # Lambda que gestionara los mensajes de la cola de confirmacion de registro a eventos
   ERCQLambda:
@@ -320,7 +335,7 @@ Outputs:
       Name: AttendeeRegisterLambdaArn
 
   # Output que muestra el nombre del bucket que guarda los json de registro de asistentes a eventos
-  EventRegistersBucketName:
-    Value: !Ref EventRegistersBucket
+  EventRegisterBucketName:
+    Value: !Ref EventRegistersBucketName
     Export:
-      Name: EventRegistersBucketName
+      Name: EventRegisterBucketName

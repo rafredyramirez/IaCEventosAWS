@@ -1,35 +1,19 @@
 # IaCEventosAWS
-Infraestructura como código para aprovisionar servicios en la nube de AWS. 
 
-##Nota
-Para almacenar las lambdas del proyecto cree una carpera dentro del bucket S3  
+Infraestructura como código para aprovisionar servicios en la nube de AWS.
 
-##Orden de ejecuión 
+## Pasos de configuración
 
-1. lambdas-stack.yml
+1. Para almacenar las lambdas y archivos yml del proyecto cree previamente un bucket de S3 y actualice los valores `Default` del parámetro `SourceCodeBucketName` en cada stack anidado segun se requiera con el nombre de dicho bucket.
 
-Comando para aprovicionar en Windows:
-aws cloudformation create-stack 
-    --stack-name lambdas-stack 
-    --template-body file://lambdas-stack.yml 
-    --capabilities CAPABILITY_NAMED_IAM
+2. Para probar la funcionalidad de envio de correos, actualice los valores `Default` de los parámetros `SESVerifiedSenderEmailIdentityName` y `SESVerifiedDestinationEmailIdentityName` en el stack anidado `stack-attendee-register.yml`
 
-Comando para aprovicionar en Mac:
-aws cloudformation create-stack \
-    --stack-name lambdas-stack \
-    --template-body file://lambdas-stack.yml \
-    --capabilities CAPABILITY_NAMED_IAM
+3. Suba al bucket de S3 que se creó en el paso 1 los archivos yml de los stacks anidados (sin incluir el `stack-main.yml`), asi como los acrhivos zip con el código de las funciones lambda.
 
-2. api-gateway-stack.yml
+4. Tome la url del objeto correspondiete a cada archivo yml de los stack anidados, generada por S3, (las que inician por https) y actualice los parámetros `TemplateURL` de cada stack en el archivo `stack-main.yml` según se requiera.
 
-Comando para aprovicionar en Windows:
-aws cloudformation create-stack 
-    --stack-name api-gateway-stack 
-    --template-body file://api-gateway-stack.yml 
-    --capabilities CAPABILITY_NAMED_IAM
+## Ejecución
 
-Comando para aprovicionar en Mac:
-aws cloudformation create-stack \
-    --stack-name api-gateway-stack \
-    --template-body file://api-gateway-stack.yml \
-    --capabilities CAPABILITY_NAMED_IAM 
+Comando para aprovicionar el stack anidado:
+
+`aws cloudformation create-stack --stack-name stack-main --template-body file://stack-main.yml --capabilities CAPABILITY_NAMED_IAM`

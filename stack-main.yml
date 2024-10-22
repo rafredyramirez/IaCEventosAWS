@@ -1,27 +1,18 @@
 AWSTemplateFormatVersion: "2010-09-09"
+
 Description: "Stack Anidado"
 
 Resources:
-
   LambdasDynamoEvents:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://source-app-eventos-udm.s3.amazonaws.com/yml/stack-lambdas-DynamoDB-events.yml"
+      TemplateURL: ""
 
   AttendeeRegistersStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://source-app-eventos-udm.s3.amazonaws.com/yml/stack-attendee-register.yml"
+      TemplateURL: ""
       Parameters:
         EventsTableArn: !GetAtt LambdasDynamoEvents.Outputs.EventsTableArn
         EventsTableName: !GetAtt LambdasDynamoEvents.Outputs.EventsTableName
     DependsOn: LambdasDynamoEvents
-
-  ApiGatewayStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: ""
-      Parameters:
-        LambdaCreateEventFunctionArn: !GetAtt LambdasDynamoEvents.Outputs.LambdaCreateEventFunctionArn
-        LambdaEditEventFunctionArn: !GetAtt LambdasDynamoEvents.Outputs.LambdaEditEventFunctionArn
-    DependsOn: AttendeeRegistersStack 

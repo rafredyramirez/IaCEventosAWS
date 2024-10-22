@@ -1,13 +1,18 @@
+AWSTemplateFormatVersion: "2010-09-09"
 
-AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  SourceCodeBucketName:
+    Type: String
+    Default: ""
+    Description: "Nombre del bucket donde se suben los zip con el codigo de las funciones lambda"
 
 Resources:
   # Rol de ejecución para Lambdas
   LambdaExecutionRole:
-    Type: 'AWS::IAM::Role'
+    Type: "AWS::IAM::Role"
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -16,7 +21,7 @@ Resources:
       Policies:
         - PolicyName: DynamoDBAccessPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -25,9 +30,9 @@ Resources:
                   - logs:PutLogEvents
                 Resource: arn:aws:logs:*:*:*
               - Effect: Allow
-                Action: 
+                Action:
                   - s3:GetObject
-                Resource: arn:aws:s3:::source-app-eventos-udm/* #nombre bucket s3 
+                Resource: !Sub "arn:aws:s3:::${SourceCodeBucketName}/*"
               - Effect: Allow # Permite el acceso a la tabla de DynamoDB de eventos
                 Action:
                   - dynamodb:GetItem
@@ -48,27 +53,27 @@ Resources:
       TableName: events
       AttributeDefinitions:
         - AttributeName: event_id
-          AttributeType: S  # String
+          AttributeType: S # String
         - AttributeName: name_event
-          AttributeType: S  # String
+          AttributeType: S # String
         - AttributeName: description
-          AttributeType: S  # String
+          AttributeType: S # String
         - AttributeName: event_date
-          AttributeType: S  # String
+          AttributeType: S # String
         - AttributeName: event_time
-          AttributeType: S  # String
+          AttributeType: S # String
         - AttributeName: max_capacity
-          AttributeType: N  # Number
+          AttributeType: N # Number
         - AttributeName: organizer
-          AttributeType: S  # String
+          AttributeType: S # String
         - AttributeName: event_status
-          AttributeType: S  # String
+          AttributeType: S # String
         - AttributeName: event_location
-          AttributeType: S  # String
+          AttributeType: S # String
       KeySchema:
         - AttributeName: event_id
-          KeyType: HASH  # Clave de partición
-      BillingMode: PAY_PER_REQUEST  # Capacidad bajo demanda
+          KeyType: HASH # Clave de partición
+      BillingMode: PAY_PER_REQUEST # Capacidad bajo demanda
       GlobalSecondaryIndexes:
         - IndexName: NameEventIndex
           KeySchema:
@@ -121,80 +126,80 @@ Resources:
 
   # Lambda lambdaFunctionCreateEvent
   CreateEventLambda:
-    Type: 'AWS::Lambda::Function'
+    Type: "AWS::Lambda::Function"
     Properties:
       FunctionName: lambdaFunctionCreateEvent
       Handler: lambdaFunctionCreateEvent.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
       Code:
-        S3Bucket: source-app-eventos-udm
-        S3Key: lambdas/lambdaFunctionCreateEvent.zip
+        S3Bucket: !Ref SourceCodeBucketName
+        S3Key: lambdaFunctionCreateEvent.zip
       Timeout: 10
 
   # Lambda lambdaFunctionEditEvent
   EditEventLambda:
-    Type: 'AWS::Lambda::Function'
+    Type: "AWS::Lambda::Function"
     Properties:
       FunctionName: lambdaFunctionEditEvent
       Handler: lambdaFunctionEditEvent.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
       Code:
-        S3Bucket: source-app-eventos-udm
-        S3Key: lambdas/lambdaFunctionEditEvent.zip
+        S3Bucket: !Ref SourceCodeBucketName
+        S3Key: lambdaFunctionEditEvent.zip
       Timeout: 10
 
   # Lambda lambdaFunctionDeleteEvent
   DeleteEventLambda:
-    Type: 'AWS::Lambda::Function'
+    Type: "AWS::Lambda::Function"
     Properties:
       FunctionName: lambdaFunctionDeleteEvent
       Handler: lambdaFunctionDeleteEvent.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
       Code:
-        S3Bucket: source-app-eventos-udm
-        S3Key: lambdas/lambdaFunctionDeleteEvent.zip
+        S3Bucket: !Ref SourceCodeBucketName
+        S3Key: lambdaFunctionDeleteEvent.zip
       Timeout: 10
 
   # Lambda lambdaFunctionViewEvent
   ViewEventLambda:
-    Type: 'AWS::Lambda::Function'
+    Type: "AWS::Lambda::Function"
     Properties:
       FunctionName: lambdaFunctionViewEvent
       Handler: lambdaFunctionViewEvent.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
       Code:
-        S3Bucket: source-app-eventos-udm
-        S3Key: lambdas/lambdaFunctionViewEvent.zip
+        S3Bucket: !Ref SourceCodeBucketName
+        S3Key: lambdaFunctionViewEvent.zip
       Timeout: 10
 
 Outputs:
   # Exporta el ARN del Authorizer Lambda Create
-  LambdaCreateEventFunctionArn: 
+  LambdaCreateEventFunctionArn:
     Description: "ARN de la Lambda Create Events"
     Value: !GetAtt CreateEventLambda.Arn
     Export:
       Name: LambdaCreateEventFunctionArn
 
   # Exporta el ARN del Authorizer Lambda Edit
-  LambdaEditEventFunctionArn: 
+  LambdaEditEventFunctionArn:
     Description: "ARN de la Lambda Edit Events"
     Value: !GetAtt EditEventLambda.Arn
     Export:
       Name: LambdaEditEventFunctionArn
 
   # Exporta el ARN del Authorizer Lambda Delete
-  LambdaDeleteEventFunctionArn: 
+  LambdaDeleteEventFunctionArn:
     Description: "ARN de la Lambda Delete Events"
     Value: !GetAtt DeleteEventLambda.Arn
     Export:
       Name: LambdaDeleteEventFunctionArn
 
   # Exporta el ARN del Authorizer Lambda View
-  LambdaViewEventFunctionArn: 
+  LambdaViewEventFunctionArn:
     Description: "ARN de la Lambda View Events"
     Value: !GetAtt ViewEventLambda.Arn
     Export:
@@ -207,6 +212,7 @@ Outputs:
     Export:
       Name: EventsTableArn
 
+  # Exporta el nombre de la tabla DynamoDB
   EventsTableName:
     Description: "Nombre de la tabla DynamoDB eventos"
     Value: !Ref EventsTable
