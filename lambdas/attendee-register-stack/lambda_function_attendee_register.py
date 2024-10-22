@@ -1,6 +1,9 @@
 import json
 import boto3
 import os
+from datetime import datetime
+import string
+import secrets
 import logging
 
 
@@ -13,6 +16,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # Variables de entorno para obtener los nombres de las tablas y la URL de la cola SQS
+events_table_name = os.environ.get('EVENTS_TABLE_NAME')
 event_registers_table_name = os.environ.get('EVENT_REGISTERS_TABLE_NAME')
 attendees_table_name = os.environ.get('ATTENDEES_TABLE_NAME')
 queue_url = os.environ.get('QUEUE_URL')
@@ -32,21 +36,63 @@ def lambda_handler(event, context):
     if not event_id or not attendee_id or not attendee_name or not attendee_email:
         return {
             'statusCode': 400,
-            'body': json.dumps('Faltan campos para registrar al asistentes al evento')
+            'body': json.dumps('Faltan campos para registrar al asistente al evento')
+        }
+
+    # Obtener datos del evento
+    event_data = dynamodb.get_item(
+        TableName=events_table_name,
+        Key={
+            'event_id': {'S': event_id}
+        }
+    )
+
+    name_event = event_data['Item']['name_event']['S']
+    event_date = event_data['Item']['event_date']['S']
+    organizer = event_data['Item']['organizer']['S']
+    max_capacity = int(event_data['Item']['max_capacity']['N'])
+
+    # Calcular el número de asistentes actuales consultando la tabla de registros de asitentes a los eventos
+    current_attendees_amount = dynamodb.query(
+        TableName=event_registers_table_name,
+        IndexName='EventIDIndex',
+        KeyConditionExpression='event_id = :event_id',
+        ExpressionAttributeValues={
+            ':event_id': {'S': event_id}
+        },
+        Select='COUNT'
+    )
+
+    # Verificar el número de asistentes actuales
+    current_attendees_amount = current_attendees_amount['Count']
+
+    # Comparar el número de asistentes actuales con la capacidad máxima
+    if current_attendees_amount >= max_capacity:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Capacidad maxima alcanzada para el evento')
         }
     
     # Crear el item para la tabla DynamoDB de registro a eventos
+    # Tamanio del registration_id unico
+    N = 10
+
+    # Generar una cadena aleatoria
+    gen_id = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for i in range(N))
+
     event_register_item = {
+        'registration_id': {'S': str(gen_id)},
         'event_id': {'S': event_id},
         'attendee_id': {'S': attendee_id},
+        'registration_date': {'S': datetime.today().strftime('%Y-%m-%d')},
         'status': {'S': status}
     }
 
     # Crear el item para la tabla DynamoDB de asistentes
     attendee_item = {
-        'id': {'S': attendee_id},
-        'name': {'S': attendee_name},
-        'email': {'S': attendee_email}
+        'attendee_id': {'S': attendee_id},
+        'attendee_name': {'S': attendee_name},
+        'attendee_email': {'S': attendee_email}
     }
     
     # Inserción en DynamoDB
@@ -73,6 +119,9 @@ def lambda_handler(event, context):
     # Crear el mensaje en formato JSON para enviar a SQS
     message_body = {
         'event_id': event_id,
+        'name_event': name_event,
+        'event_date': event_date,
+        'organizer': organizer,
         'attendee_id': attendee_id,
         'attendee_name': attendee_name,
         'attendee_email': attendee_email, 
