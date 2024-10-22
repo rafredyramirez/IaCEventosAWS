@@ -223,6 +223,39 @@ Resources:
       SourceArn: !Sub
         arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
 
+  # Method Create Assistens
+  PostMethodForAssistens:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      AuthorizationType: CUSTOM  # Tipo de autorización personalizada usando Lambda Authorizer
+      AuthorizerId: !Ref ApiGatewayAuthorizer  # Utiliza el Authorizer que creamos
+      HttpMethod: POST
+      ResourceId: !Ref AssistensResource
+      RestApiId: !Ref ApiGatewayRestApi
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaCreateAssistensArn}/invocations
+          - LambdaCreateAssistensArn: !ImportValue AttendeeRegisterLambdaArn
+        TimeoutInMillis: 29000  # Configura el timeout a 29 segundos
+        IntegrationResponses:
+          - StatusCode: 200
+      MethodResponses:
+        - StatusCode: 200
+      RequestParameters:
+        method.request.header.Authorization: false  # No usar caché
+
+  # Permisos para que API Gateway invoque la Lambda principal
+  LambdaCreateAssistenstInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !ImportValue AttendeeRegisterLambdaArn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
+
   # Permisos para que API Gateway invoque el Lambda Authorizer
   AuthorizerInvokePermission:
     Type: 'AWS::Lambda::Permission'
@@ -246,12 +279,12 @@ Resources:
       StageName: dev  # Nombre de la etapa de despliegue
 
 # Outputs:
-#   LambdaFunctionArn:
-#     Description: "ARN de la Lambda principal"
-#     Value: !GetAtt HelloLambda.Arn
+#   RoleArnExport:
+#     Description: "ARN del IAM Role para exportar"
+#     Value: !GetAtt LambdaExecutionRole.Arn
 #     Export:
-#       Name: LambdaFunctionArn
-
+#       Name: MyRoleArnExport  # Nombre que se exportará
+      
 #   AuthorizerLambdaArn:  # Exporta el ARN del Authorizer Lambda
 #     Description: "ARN del Authorizer Lambda"
 #     Value: !GetAtt AuthorizerLambda.Arn

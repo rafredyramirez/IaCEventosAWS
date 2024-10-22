@@ -5,7 +5,7 @@ Description: "Stack con los recursos necesarios para gestionar el registro de as
 Parameters:
   SourceCodeBucketName:
     Type: String
-    Default: udem-lambda-code
+    Default: source-app-eventos-udm
     Description: "Nombre del bucket donde se suben los zip con el codigo de las funciones lambda"
 
   EventsTableArn:

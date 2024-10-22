@@ -1,0 +1,32 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Template para crear una instancia de Amazon Lightsail con acceso SSH.
+
+Parameters:
+  InstanceName:
+    Type: String
+    Default: MyLightsailInstance
+    Description: Nombre de la instancia de Lightsail.
+    
+Resources:
+  MyLightsailInstance:
+    Type: AWS::Lightsail::Instance
+    Properties:
+      InstanceName: !Ref InstanceName
+      AvailabilityZone: us-east-1a # Cambia según tu región preferida
+      BlueprintId: ubuntu_20_04 # Puedes cambiar a otra imagen según sea necesario
+      BundleId: micro_1_0 # Cambia según el tamaño que necesites
+      UserData: |
+        #!/bin/bash
+        sudo apt-get update
+        sudo apt-get install -y python3-pip
+        sudo pip3 install django
+        sudo apt-get install -y docker.io
+        sudo systemctl start docker
+        sudo systemctl enable docker
+        sudo usermod -aG docker $USER
+        docker pull rafredyramirez/mydjangoapp:latest
+        docker run -d -p 8080:8000 rafredyramirez/mydjangoapp
+Outputs:
+  InstanceId:
+    Description: ID de la instancia de Lightsail.
+    Value: !Ref MyLightsailInstance

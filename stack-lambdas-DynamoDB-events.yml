@@ -206,3 +206,9 @@ Outputs:
     Value: !GetAtt EventsTable.Arn
     Export:
       Name: EventsTableArn
+
+  EventsTableName:
+    Description: "Nombre de la tabla DynamoDB eventos"
+    Value: !Ref EventsTable
+    Export:
+      Name: EventsTableName
