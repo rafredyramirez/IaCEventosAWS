@@ -3,16 +3,15 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "Stack Anidado"
 
 Resources:
-
   LambdasDynamoEvents:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://source-app-eventos-udm-test.s3.us-east-1.amazonaws.com/stack-lambdas-DynamoDB-events.yml"
+      TemplateURL: "https://udem-lambda-code.s3.us-east-1.amazonaws.com/stack-lambdas-DynamoDB-events.yml"
 
   AttendeeRegistersStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://source-app-eventos-udm-test.s3.us-east-1.amazonaws.com/stack-attendee-register.yml"
+      TemplateURL: "https://udem-lambda-code.s3.us-east-1.amazonaws.com/stack-attendee-register.yml"
       Parameters:
         EventsTableArn: !GetAtt LambdasDynamoEvents.Outputs.EventsTableArn
         EventsTableName: !GetAtt LambdasDynamoEvents.Outputs.EventsTableName
@@ -21,7 +20,7 @@ Resources:
   APIGatewayAuthorizerStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://source-app-eventos-udm-test.s3.us-east-1.amazonaws.com/stack-api-gateway.yml"
+      TemplateURL: "https://udem-lambda-code.s3.us-east-1.amazonaws.com/stack-api-gateway.yml"
       Parameters:
         LambdaCreateEventFunctionArn: !GetAtt LambdasDynamoEvents.Outputs.LambdaCreateEventFunctionArn
         LambdaEditEventFunctionArn: !GetAtt LambdasDynamoEvents.Outputs.LambdaEditEventFunctionArn

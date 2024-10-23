@@ -26,17 +26,41 @@ def lambda_handler(event, context):
     Función Lambda que inserta datos en DynamoDB y luego envía un mensaje a una cola SQS.
     '''
     
+    if 'body' in event:
+        data = json.loads(event['body'])
+    else:
+        # Si estás probando localmente, simplemente asume que el evento ya contiene los datos
+        data = event
+
     # Los datos que provienen del evento pueden estar en un formato JSON
-    event_id = event.get('event_id')
-    attendee_id = event.get('attendee_id')
-    attendee_name = event.get('attendee_name')
-    attendee_email = event.get('attendee_email')
+    event_id = data.get('event_id')
+    attendee_id = data.get('attendee_id')
+    attendee_name = data.get('attendee_name')
+    attendee_email = data.get('attendee_email')
     status = 'Confirmado'
     
     if not event_id or not attendee_id or not attendee_name or not attendee_email:
         return {
             'statusCode': 400,
             'body': json.dumps('Faltan campos para registrar al asistente al evento')
+        }
+    
+    # Obtener el numero de registros con el id del evento y el id del asistente (si los hay)
+    is_attendee_already_registered = dynamodb.query(
+        TableName=event_registers_table_name,
+        IndexName='EventAttendeeIndex',  # Usar el índice por event_id
+        KeyConditionExpression='event_id = :event_id AND attendee_id = :attendee_id',
+        ExpressionAttributeValues={
+            ':event_id': {'S': event_id},
+            ':attendee_id': {'S': attendee_id}
+        }
+    )
+        
+    # Si el conteo es mayor a 0, el asistente ya está registrado
+    if is_attendee_already_registered['Count'] > 0:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('El asistente con ID {} ya se encuentra registrado para el evento {}'.format(attendee_id, event_id))
         }
 
     # Obtener datos del evento
@@ -102,10 +126,19 @@ def lambda_handler(event, context):
             Item=event_register_item
         )
 
-        dynamodb.put_item(
+        # Consular la tabla de asistentes
+        is_attendee_registered = dynamodb.get_item(
             TableName=attendees_table_name,
-            Item=attendee_item
+            Key={'attendee_id': {'S': attendee_id}}
         )
+        
+        # Si se encuentra un registro, significa que el asistente ya se ha registrado previamente a algun evento
+        # con el fin de no registrarlo dos veces
+        if 'Item' not in is_attendee_registered:        
+            dynamodb.put_item(
+                TableName=attendees_table_name,
+                Item=attendee_item
+            )
 
         logger.info('Se ha registrado el asistente al evento exitosamente')
     except Exception as e:

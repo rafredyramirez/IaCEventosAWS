@@ -5,22 +5,22 @@ Description: "Stack con los recursos necesarios para gestionar el registro de as
 Parameters:
   SourceCodeBucketName:
     Type: String
-    Default: "source-app-eventos-udm-test"
+    Default: "udem-lambda-code"
     Description: "Nombre del bucket donde se suben los zip con el codigo de las funciones lambda"
 
   EventRegistersBucketName:
     Type: String
-    Default: "json-eventos-udm-test"
+    Default: "udem-events-registers-json-test"
     Description: "Nombre del bucket para guardar los json de registro de asistentes a eventos"
 
   SESVerifiedSenderEmailIdentityName:
     Type: String
-    Default: "ra.fredyramirez@gmail.com" #correo que emite el mensaje
+    Default: "correo.notificaciones.fabv@gmail.com" #correo que emite el mensaje
     Description: "Correo que será verificado manualmente en SES para enviar correos"
 
   SESVerifiedDestinationEmailIdentityName:
     Type: String
-    Default: "framirez965@soyudemedellin.edu.co" #receptor
+    Default: "faberrocalv@gmail.com" #receptor
     Description: "Correo que será verificado manualmente en SES para recibir correos"
 
   EventsTableArn:
@@ -102,6 +102,14 @@ Resources:
           KeySchema:
             - AttributeName: status
               KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: EventAttendeeIndex # Indice combinado de event_id y attendee_id
+          KeySchema:
+            - AttributeName: event_id
+              KeyType: HASH
+            - AttributeName: attendee_id
+              KeyType: RANGE
           Projection:
             ProjectionType: ALL
 
@@ -282,21 +290,23 @@ Resources:
                   - "logs:CreateLogStream" # Permite la creación de un stream de logs en CloudWatch
                   - "logs:PutLogEvents" # Permite escribir eventos de logs en CloudWatch
                 Resource: "*" # Aplica los permisos a todos los recursos descritos anteriormente
-              - Effect: "Allow" # Permite la acción descrita
+              - Effect: "Allow"
                 Action:
                   - "sqs:SendMessage" # Permite enviar mensajes a la cola
                   - "sqs:GetQueueAttributes" # Permite obtener los atributos de la cola
                 Resource: !GetAtt EventRegisterConfirmationQueue.Arn
-              - Effect: "Allow" # Permite la acción descrita
+              - Effect: "Allow"
                 Action:
+                  - "dynamodb:GetItem"
                   - "dynamodb:PutItem"
                 Resource: !GetAtt AttendeesTable.Arn
-              - Effect: "Allow" # Permite la acción descrita
+              - Effect: "Allow"
                 Action:
                   - "dynamodb:Query"
                 Resource:
                   - !GetAtt EventRegistersTable.Arn
                   - !Sub "${EventRegistersTable.Arn}/index/EventIDIndex"
+                  - !Sub "${EventRegistersTable.Arn}/index/EventAttendeeIndex"
               - Effect: Allow
                 Action:
                   - "dynamodb:PutItem"

@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 Parameters:
   SourceCodeBucketName:
     Type: String
-    Default: "source-app-eventos-udm-test "
+    Default: "udem-lambda-code"
     Description: "Nombre del bucket donde se suben los zip con el codigo de las funciones lambda"
 
 Resources:

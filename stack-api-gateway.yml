@@ -1,35 +1,40 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
+
 Description: "Stack para aprovisionar API GATEWAY Y Authotizer"
 
 Parameters:
   StageDeploy:
     Type: String
     Default: QA
-    Description: Nombre stage del ambiente 
+    Description: Nombre stage del ambiente
+
+  SourceCodeBucketName:
+    Type: String
+    Default: "udem-lambda-code"
+    Description: "Nombre del bucket donde se suben los zip con el codigo de las funciones lambda"
 
   LambdaCreateEventFunctionArn:
     Type: String
-  
+
   LambdaEditEventFunctionArn:
     Type: String
 
   LambdaDeleteEventFunctionArn:
     Type: String
-  
+
   LambdaViewEventFunctionArn:
     Type: String
-  
+
   AttendeeRegisterLambdaArn:
     Type: String
 
 Resources:
-
   # Rol de ejecución para Lambdas
   LambdaExecutionRole:
-    Type: 'AWS::IAM::Role'
+    Type: "AWS::IAM::Role"
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -42,7 +47,7 @@ Resources:
       Policies:
         - PolicyName: LambdaExecutionPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -53,62 +58,61 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:GetObject
-                Resource: arn:aws:s3:::source-app-eventos-udm/*
+                Resource: !Sub "arn:aws:s3:::${SourceCodeBucketName}/*"
 
   # Lambda Authorizer
   AuthorizerLambda:
-    Type: 'AWS::Lambda::Function'
+    Type: "AWS::Lambda::Function"
     Properties:
       FunctionName: AuthorizerLambda
       Handler: authorizer.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
       Code:
-        S3Bucket: source-app-eventos-udm
+        S3Bucket: !Ref SourceCodeBucketName
         S3Key: authorizer.zip
       Timeout: 5
 
   # API Gateway
   ApiGatewayRestApi:
-    Type: 'AWS::ApiGateway::RestApi'
+    Type: "AWS::ApiGateway::RestApi"
     Properties:
       Name: ApiRestEventos
-      Description: 'API Gateway para gestionar eventos'
+      Description: "API Gateway para gestionar eventos"
 
   # Recurso "/events"
   EventsResource:
-    Type: 'AWS::ApiGateway::Resource'
+    Type: "AWS::ApiGateway::Resource"
     Properties:
-      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId  # Hace referencia al recurso raíz
-      PathPart: "events"  # Define la ruta como "/eventos"
+      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId # Hace referencia al recurso raíz
+      PathPart: "events" # Define la ruta como "/eventos"
       RestApiId: !Ref ApiGatewayRestApi
-  
+
   # Recurso "/assistens"
   AssistensResource:
-    Type: 'AWS::ApiGateway::Resource'
+    Type: "AWS::ApiGateway::Resource"
     Properties:
-      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId  # Hace referencia al recurso raíz
-      PathPart: "assistens"  # Define la ruta como "/eventos"
+      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId # Hace referencia al recurso raíz
+      PathPart: "assistens" # Define la ruta como "/eventos"
       RestApiId: !Ref ApiGatewayRestApi
 
   # Authorizer para la API Gateway
   ApiGatewayAuthorizer:
-    Type: 'AWS::ApiGateway::Authorizer'
+    Type: "AWS::ApiGateway::Authorizer"
     Properties:
       Name: AuthorizerLambda
       RestApiId: !Ref ApiGatewayRestApi
       Type: TOKEN
-      AuthorizerUri: !Sub
-        arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerLambda.Arn}/invocations
+      AuthorizerUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerLambda.Arn}/invocations
       IdentitySource: method.request.header.authorizationToken
-      AuthorizerResultTtlInSeconds: 0  # Deshabilita el caché
+      AuthorizerResultTtlInSeconds: 0 # Deshabilita el caché
 
   # Method Create events
   PostMethodForEvents:
-    Type: 'AWS::ApiGateway::Method'
+    Type: "AWS::ApiGateway::Method"
     Properties:
-      AuthorizationType: CUSTOM  # Tipo de autorización personalizada usando Lambda Authorizer
-      AuthorizerId: !Ref ApiGatewayAuthorizer  # Utiliza el Authorizer que creamos
+      AuthorizationType: CUSTOM # Tipo de autorización personalizada usando Lambda Authorizer
+      AuthorizerId: !Ref ApiGatewayAuthorizer # Utiliza el Authorizer que creamos
       HttpMethod: POST
       ResourceId: !Ref EventsResource
       RestApiId: !Ref ApiGatewayRestApi
@@ -118,30 +122,29 @@ Resources:
         Uri: !Sub
           - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaCreateEventsArn}/invocations
           - LambdaCreateEventsArn: !ImportValue LambdaCreateEventFunctionArn
-        TimeoutInMillis: 29000  # Configura el timeout a 29 segundos
+        TimeoutInMillis: 29000 # Configura el timeout a 29 segundos
         IntegrationResponses:
           - StatusCode: 200
       MethodResponses:
         - StatusCode: 200
       RequestParameters:
-        method.request.header.Authorization: false  # No usar caché
+        method.request.header.Authorization: false # No usar caché
 
   # Permisos para que API Gateway invoque la Lambda principal
   LambdaCreateEventInvokePermission:
-    Type: 'AWS::Lambda::Permission'
+    Type: "AWS::Lambda::Permission"
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !ImportValue LambdaCreateEventFunctionArn
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub
-        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
 
   # Method Edit events
   PutMethodForEvents:
-    Type: 'AWS::ApiGateway::Method'
+    Type: "AWS::ApiGateway::Method"
     Properties:
-      AuthorizationType: CUSTOM  # Tipo de autorización personalizada usando Lambda Authorizer
-      AuthorizerId: !Ref ApiGatewayAuthorizer  # Utiliza el Authorizer que creamos
+      AuthorizationType: CUSTOM # Tipo de autorización personalizada usando Lambda Authorizer
+      AuthorizerId: !Ref ApiGatewayAuthorizer # Utiliza el Authorizer que creamos
       HttpMethod: PUT
       ResourceId: !Ref EventsResource
       RestApiId: !Ref ApiGatewayRestApi
@@ -151,30 +154,29 @@ Resources:
         Uri: !Sub
           - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaEditEventsArn}/invocations
           - LambdaEditEventsArn: !ImportValue LambdaEditEventFunctionArn
-        TimeoutInMillis: 29000  # Configura el timeout a 29 segundos
+        TimeoutInMillis: 29000 # Configura el timeout a 29 segundos
         IntegrationResponses:
           - StatusCode: 200
       MethodResponses:
         - StatusCode: 200
       RequestParameters:
-        method.request.header.Authorization: false  # No usar caché
+        method.request.header.Authorization: false # No usar caché
 
   # Permisos para que API Gateway invoque la Lambda principal
   LambdaEditEventInvokePermission:
-    Type: 'AWS::Lambda::Permission'
+    Type: "AWS::Lambda::Permission"
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !ImportValue LambdaEditEventFunctionArn
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub
-        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
 
   # Method Delete events
   DeleteMethodForEvents:
-    Type: 'AWS::ApiGateway::Method'
+    Type: "AWS::ApiGateway::Method"
     Properties:
-      AuthorizationType: CUSTOM  # Tipo de autorización personalizada usando Lambda Authorizer
-      AuthorizerId: !Ref ApiGatewayAuthorizer  # Utiliza el Authorizer que creamos
+      AuthorizationType: CUSTOM # Tipo de autorización personalizada usando Lambda Authorizer
+      AuthorizerId: !Ref ApiGatewayAuthorizer # Utiliza el Authorizer que creamos
       HttpMethod: DELETE
       ResourceId: !Ref EventsResource
       RestApiId: !Ref ApiGatewayRestApi
@@ -184,30 +186,29 @@ Resources:
         Uri: !Sub
           - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaDeleteEventsArn}/invocations
           - LambdaDeleteEventsArn: !ImportValue LambdaDeleteEventFunctionArn
-        TimeoutInMillis: 29000  # Configura el timeout a 29 segundos
+        TimeoutInMillis: 29000 # Configura el timeout a 29 segundos
         IntegrationResponses:
           - StatusCode: 200
       MethodResponses:
         - StatusCode: 200
       RequestParameters:
-        method.request.header.Authorization: false  # No usar caché
+        method.request.header.Authorization: false # No usar caché
 
   # Permisos para que API Gateway invoque la Lambda principal
   LambdaDeleteEventInvokePermission:
-    Type: 'AWS::Lambda::Permission'
+    Type: "AWS::Lambda::Permission"
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !ImportValue LambdaDeleteEventFunctionArn
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub
-        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
 
   # Method View events
   GetMethodForEvents:
-    Type: 'AWS::ApiGateway::Method'
+    Type: "AWS::ApiGateway::Method"
     Properties:
-      AuthorizationType: CUSTOM  # Tipo de autorización personalizada usando Lambda Authorizer
-      AuthorizerId: !Ref ApiGatewayAuthorizer  # Utiliza el Authorizer que creamos
+      AuthorizationType: CUSTOM # Tipo de autorización personalizada usando Lambda Authorizer
+      AuthorizerId: !Ref ApiGatewayAuthorizer # Utiliza el Authorizer que creamos
       HttpMethod: GET
       ResourceId: !Ref EventsResource
       RestApiId: !Ref ApiGatewayRestApi
@@ -217,40 +218,38 @@ Resources:
         Uri: !Sub
           - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaViewEventsArn}/invocations
           - LambdaViewEventsArn: !ImportValue LambdaViewEventFunctionArn
-        TimeoutInMillis: 29000  # Configura el timeout a 29 segundos
+        TimeoutInMillis: 29000 # Configura el timeout a 29 segundos
         IntegrationResponses:
           - StatusCode: 200
       MethodResponses:
         - StatusCode: 200
       RequestParameters:
-        method.request.header.Authorization: false  # No usar caché
+        method.request.header.Authorization: false # No usar caché
 
   # Permisos para que API Gateway invoque la Lambda principal
   LambdaViewEventInvokePermission:
-    Type: 'AWS::Lambda::Permission'
+    Type: "AWS::Lambda::Permission"
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !ImportValue LambdaViewEventFunctionArn
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub
-        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
 
   # Permisos para que API Gateway invoque la Lambda principal
   LambdaListEventInvokePermission:
-    Type: 'AWS::Lambda::Permission'
+    Type: "AWS::Lambda::Permission"
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !ImportValue LambdaViewEventFunctionArn
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub
-        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
 
   # Method Create Assistens
   PostMethodForAssistens:
-    Type: 'AWS::ApiGateway::Method'
+    Type: "AWS::ApiGateway::Method"
     Properties:
-      AuthorizationType: CUSTOM  # Tipo de autorización personalizada usando Lambda Authorizer
-      AuthorizerId: !Ref ApiGatewayAuthorizer  # Utiliza el Authorizer que creamos
+      AuthorizationType: CUSTOM # Tipo de autorización personalizada usando Lambda Authorizer
+      AuthorizerId: !Ref ApiGatewayAuthorizer # Utiliza el Authorizer que creamos
       HttpMethod: POST
       ResourceId: !Ref AssistensResource
       RestApiId: !Ref ApiGatewayRestApi
@@ -260,45 +259,43 @@ Resources:
         Uri: !Sub
           - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaCreateAssistensArn}/invocations
           - LambdaCreateAssistensArn: !ImportValue AttendeeRegisterLambdaArn
-        TimeoutInMillis: 29000  # Configura el timeout a 29 segundos
+        TimeoutInMillis: 29000 # Configura el timeout a 29 segundos
         IntegrationResponses:
           - StatusCode: 200
       MethodResponses:
         - StatusCode: 200
       RequestParameters:
-        method.request.header.Authorization: false  # No usar caché
+        method.request.header.Authorization: false # No usar caché
 
   # Permisos para que API Gateway invoque la Lambda principal
   LambdaCreateAssistenstInvokePermission:
-    Type: 'AWS::Lambda::Permission'
+    Type: "AWS::Lambda::Permission"
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !ImportValue AttendeeRegisterLambdaArn
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub
-        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
 
   # Permisos para que API Gateway invoque el Lambda Authorizer
   AuthorizerInvokePermission:
-    Type: 'AWS::Lambda::Permission'
+    Type: "AWS::Lambda::Permission"
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt AuthorizerLambda.Arn
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub
-        arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*
 
   # Despliegue del API Gateway
   ApiDeployment:
-    Type: 'AWS::ApiGateway::Deployment'
-    DependsOn: 
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn:
       - PostMethodForEvents
       - PutMethodForEvents
       - DeleteMethodForEvents
       - GetMethodForEvents
     Properties:
       RestApiId: !Ref ApiGatewayRestApi
-      StageName: !Ref StageDeploy  # Nombre de la etapa de despliegue
+      StageName: !Ref StageDeploy # Nombre de la etapa de despliegue
 
 # Outputs:
 #   RoleArnExport:
@@ -306,7 +303,7 @@ Resources:
 #     Value: !GetAtt LambdaExecutionRole.Arn
 #     Export:
 #       Name: MyRoleArnExport  # Nombre que se exportará
-      
+
 #   AuthorizerLambdaArn:  # Exporta el ARN del Authorizer Lambda
 #     Description: "ARN del Authorizer Lambda"
 #     Value: !GetAtt AuthorizerLambda.Arn
