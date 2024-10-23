@@ -3,15 +3,15 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "Stack para aprovisionar API GATEWAY Y Authotizer"
 
 Parameters:
+  SourceCodeBucketName:
+    Type: String
+    Default: ""
+    Description: "Nombre del bucket donde se suben los zip con el codigo de las funciones lambda"
+
   StageDeploy:
     Type: String
     Default: QA
     Description: Nombre stage del ambiente
-
-  SourceCodeBucketName:
-    Type: String
-    Default: "udem-lambda-code"
-    Description: "Nombre del bucket donde se suben los zip con el codigo de las funciones lambda"
 
   LambdaCreateEventFunctionArn:
     Type: String

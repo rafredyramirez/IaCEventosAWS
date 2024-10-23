@@ -6,12 +6,12 @@ Resources:
   LambdasDynamoEvents:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://udem-lambda-code.s3.us-east-1.amazonaws.com/stack-lambdas-DynamoDB-events.yml"
+      TemplateURL: ""
 
   AttendeeRegistersStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://udem-lambda-code.s3.us-east-1.amazonaws.com/stack-attendee-register.yml"
+      TemplateURL: ""
       Parameters:
         EventsTableArn: !GetAtt LambdasDynamoEvents.Outputs.EventsTableArn
         EventsTableName: !GetAtt LambdasDynamoEvents.Outputs.EventsTableName
@@ -20,7 +20,7 @@ Resources:
   APIGatewayAuthorizerStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://udem-lambda-code.s3.us-east-1.amazonaws.com/stack-api-gateway.yml"
+      TemplateURL: ""
       Parameters:
         LambdaCreateEventFunctionArn: !GetAtt LambdasDynamoEvents.Outputs.LambdaCreateEventFunctionArn
         LambdaEditEventFunctionArn: !GetAtt LambdasDynamoEvents.Outputs.LambdaEditEventFunctionArn
