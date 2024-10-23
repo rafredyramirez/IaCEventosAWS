@@ -14,6 +14,6 @@ Infraestructura como código para aprovisionar servicios en la nube de AWS.
 
 ## Ejecución
 
-Comando para aprovicionar el stack anidado:
+Comando para aprovicionar el stack principal:
 
-`aws cloudformation create-stack --stack-name stack-main --template-body file://stack-main.yml --capabilities CAPABILITY_NAMED_IAM`
+`aws cloudformation deploy --stack-name stack-main --template-file stack-main.yml --capabilities CAPABILITY_NAMED_IAM`

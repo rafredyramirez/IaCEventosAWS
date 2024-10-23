@@ -1,4 +1,26 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Description: "Stack para aprovisionar API GATEWAY Y Authotizer"
+
+Parameters:
+  StageDeploy:
+    Type: String
+    Default: QA
+    Description: Nombre stage del ambiente 
+
+  LambdaCreateEventFunctionArn:
+    Type: String
+  
+  LambdaEditEventFunctionArn:
+    Type: String
+
+  LambdaDeleteEventFunctionArn:
+    Type: String
+  
+  LambdaViewEventFunctionArn:
+    Type: String
+  
+  AttendeeRegisterLambdaArn:
+    Type: String
 
 Resources:
 
@@ -43,7 +65,7 @@ Resources:
       Runtime: python3.9
       Code:
         S3Bucket: source-app-eventos-udm
-        S3Key: lambdas/authorizer.zip
+        S3Key: authorizer.zip
       Timeout: 5
 
   # API Gateway
@@ -276,7 +298,7 @@ Resources:
       - GetMethodForEvents
     Properties:
       RestApiId: !Ref ApiGatewayRestApi
-      StageName: dev  # Nombre de la etapa de despliegue
+      StageName: !Ref StageDeploy  # Nombre de la etapa de despliegue
 
 # Outputs:
 #   RoleArnExport:
