@@ -49,16 +49,12 @@ Resources:
   AthenaWorkGroup:
     Type: 'AWS::Athena::WorkGroup'
     Properties:
-      #Name: 'mi_grupo_de_trabajo'
+      Name: 'mi_grupo_de_trabajo'
       WorkGroupConfiguration:
         ResultConfiguration:
           OutputLocation: !Sub 's3://${AthenaQueryResultsBucket}/resultados/'
 
 Outputs:
-  S3BucketName:
-    Description: 'Nombre del bucket de S3 para los datos'
-    Value: !Ref DataS3Bucket
-
   GlueDatabaseName:
     Description: 'Nombre de la base de datos en Glue Data Catalog'
     Value: !Ref GlueDataCatalogDatabase

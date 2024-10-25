@@ -32,7 +32,7 @@ Resources:
   EventGlue:
     Type: AWS::CloudFormation::Stack
     Properties:
-    TemplateURL: "https://source-app-eventos-udm-test.s3.us-east-1.amazonaws.com/stack-s3Athena.yml"
-    Parameters:
-      EventRegisterBucketName: !GetAtt AttendeeRegistersStack.Outputs.EventRegisterBucketName
-  DependsOn: AttendeeRegistersStack
+      TemplateURL: "https://source-app-eventos-udm-test.s3.us-east-1.amazonaws.com/stack-s3Athena.yml"
+      Parameters:
+        EventRegisterBucketName: !GetAtt AttendeeRegistersStack.Outputs.EventRegisterBucketName
+    DependsOn: AttendeeRegistersStack
