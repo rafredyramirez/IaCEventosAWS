@@ -5,7 +5,7 @@ Description: "Stack para aprovisionar API GATEWAY Y Authotizer"
 Parameters:
   SourceCodeBucketName:
     Type: String
-    Default: ""
+    Default: "source-app-eventos-udm-test"
     Description: "Nombre del bucket donde se suben los zip con el codigo de las funciones lambda"
 
   StageDeploy:

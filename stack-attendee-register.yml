@@ -5,22 +5,22 @@ Description: "Stack con los recursos necesarios para gestionar el registro de as
 Parameters:
   SourceCodeBucketName:
     Type: String
-    Default: ""
+    Default: "source-app-eventos-udm-test"
     Description: "Nombre del bucket donde se suben los zip con el codigo de las funciones lambda"
 
   EventRegistersBucketName:
     Type: String
-    Default: ""
+    Default: "json-eventos-udm-test"
     Description: "Nombre del bucket para guardar los json de registro de asistentes a eventos"
 
   SESVerifiedSenderEmailIdentityName:
     Type: String
-    Default: "" # correo que emite el mensaje
+    Default: "ra.fredy10@gmail.com" # correo que emite el mensaje
     Description: "Correo que será verificado manualmente en SES para enviar correos"
 
   SESVerifiedDestinationEmailIdentityName:
     Type: String
-    Default: "" # correo receptor
+    Default: "ra.fredyramirez@gmail.com" # correo receptor
     Description: "Correo que será verificado manualmente en SES para recibir correos"
 
   EventsTableArn:

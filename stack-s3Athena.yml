@@ -1,13 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Stack for S3, Glue Data Catalog, and Athena query flow
 
-Resources:
-  # Crear bucket de S3
-  DataS3Bucket:
-    Type: 'AWS::S3::Bucket'
-    Properties: 
-      BucketName: "udem-events-lambda-registers"
+Parameters:
 
+  EventRegisterBucketName:
+    Type: String
+    
+Resources:
   # Crear un Glue Data Catalog Database
   GlueDataCatalogDatabase:
     Type: 'AWS::Glue::Database'
@@ -32,7 +31,8 @@ Resources:
               Type: 'int'
             - Name: 'nombre'
               Type: 'string'
-          #Location: !Sub 's3://${DataS3Bucket}/jgomez/datos/'
+          # Location: !Sub 's3://${DataS3Bucket}/jgomez/datos/'
+          Location: !Sub 's3://${EventRegisterBucketName}/'
           InputFormat: 'org.apache.hadoop.mapred.TextInputFormat'
           OutputFormat: 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
           SerdeInfo:
