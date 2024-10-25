@@ -1,0 +1,34 @@
+image: python:3.10-slim
+
+pipelines:
+  default:
+    - step:
+        name: Deploy to S3
+        caches:
+          - pip
+        script:
+          - pwd
+          - ls -l
+          # Instala AWS CLI
+          - apt-get update && apt-get install -y zip curl
+          - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          - unzip awscliv2.zip
+          - ./aws/install
+          
+          # Configura AWS CLI usando variables de entorno
+          - |
+            aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+            aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+            aws configure set default.region $AWS_REGION
+          
+          - cd lambdas
+          
+          # Crear un archivo zip para cada archivo .py dentro de la carpeta
+          - for file in *.py; do zip "${file%.py}.zip" "$file"; done
+          # Subir todos los archivos .zip al bucket S3
+          - aws s3 cp ./ s3://$S3_BUCKET_NAME/ --recursive --exclude "*" --include "*.zip"
+          
+          - cd ../
+          - cd stacks
+          # Subir todos los archivos .yml al bucket S3
+          - aws s3 cp ./ s3://$S3_BUCKET_NAME/ --recursive --exclude "*" --include "*.yml"
