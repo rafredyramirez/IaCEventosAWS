@@ -5,13 +5,9 @@ Description: "Stack para aprovisionar API GATEWAY Y Authotizer"
 Parameters:
   SourceCodeBucketName:
     Type: String
-    Default: "source-app-eventos-udm-test"
-    Description: "Nombre del bucket donde se suben los zip con el codigo de las funciones lambda"
 
   StageDeploy:
     Type: String
-    Default: QA
-    Description: Nombre stage del ambiente
 
   LambdaCreateEventFunctionArn:
     Type: String
@@ -297,15 +293,8 @@ Resources:
       RestApiId: !Ref ApiGatewayRestApi
       StageName: !Ref StageDeploy # Nombre de la etapa de despliegue
 
-# Outputs:
-#   RoleArnExport:
-#     Description: "ARN del IAM Role para exportar"
-#     Value: !GetAtt LambdaExecutionRole.Arn
-#     Export:
-#       Name: MyRoleArnExport  # Nombre que se exportará
-
-#   AuthorizerLambdaArn:  # Exporta el ARN del Authorizer Lambda
-#     Description: "ARN del Authorizer Lambda"
-#     Value: !GetAtt AuthorizerLambda.Arn
-#     Export:
-#       Name: AuthorizerLambdaArn
+Outputs:
+  ApiBaseURL:
+    Value: !Sub "https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${StageDeploy}/"
+    Export:
+      Name: ApiBaseURL

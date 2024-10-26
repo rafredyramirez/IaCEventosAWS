@@ -1,31 +1,39 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
+
 Description: Template para crear una instancia de Amazon Lightsail con acceso SSH.
 
 Parameters:
   InstanceName:
     Type: String
-    Default: MyLightsailInstance
-    Description: Nombre de la instancia de Lightsail.
-    
+
+  ApiBaseURL:
+    Type: String
+
 Resources:
   MyLightsailInstance:
     Type: AWS::Lightsail::Instance
     Properties:
       InstanceName: !Ref InstanceName
       AvailabilityZone: us-east-1a # Cambia según tu región preferida
-      BlueprintId: ubuntu_20_04 # Puedes cambiar a otra imagen según sea necesario
-      BundleId: micro_1_0 # Cambia según el tamaño que necesites
-      UserData: |
-        #!/bin/bash
-        sudo apt-get update
-        sudo apt-get install -y python3-pip
-        sudo pip3 install django
-        sudo apt-get install -y docker.io
-        sudo systemctl start docker
-        sudo systemctl enable docker
-        sudo usermod -aG docker $USER
-        docker pull rafredyramirez/mydjangoapp:latest
-        docker run -d -p 8080:8000 rafredyramirez/mydjangoapp
+      BlueprintId: ubuntu_24_04 # Puedes cambiar a otra imagen según sea necesario
+      BundleId: micro_3_0 # Cambia según el tamaño que necesites
+      UserData:
+        Fn::Join:
+          - ""
+          - - "#!/bin/bash\n"
+            - "sudo apt-get update\n"
+            - "sudo apt-get install -y docker.io docker-compose\n"
+            - "sudo systemctl start docker\n"
+            - "sudo systemctl enable docker\n"
+            - "git clone https://github.com/faberrocalv/django-serverless.git\n"
+            - "cd django-serverless/\n"
+            - "my_ip=$(curl http://checkip.amazonaws.com)\n"
+            - "echo \"INSTANCE_IP=${my_ip}\" > .env\n"
+            - 'echo "API_GATEWAY_BASE='
+            - !Ref ApiBaseURL
+            - "\" >> .env\n"
+            - "sudo docker-compose up -d\n"
+
 Outputs:
   InstanceId:
     Description: ID de la instancia de Lightsail.

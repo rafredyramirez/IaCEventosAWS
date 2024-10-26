@@ -2,17 +2,52 @@ AWSTemplateFormatVersion: "2010-09-09"
 
 Description: "Stack Anidado"
 
+Parameters:
+  SourceCodeBucketName:
+    Type: String
+    Description: "Nombre del bucket donde se suben los zip con el codigo de las funciones lambda"
+
+  EventRegistersBucketName:
+    Type: String
+    Description: "Nombre del bucket para guardar los json de registro de asistentes a eventos"
+
+  SESVerifiedSenderEmailIdentityName:
+    Type: String
+    Description: "Correo que será verificado manualmente en SES para enviar correos"
+
+  SESVerifiedDestinationEmailIdentityName:
+    Type: String
+    Description: "Correo que será verificado manualmente en SES para recibir correos"
+
+  SESVerifiedDestinationEmailIdentityName:
+    Type: String
+    Description: "Correo que será verificado manualmente en SES para recibir correos"
+
+  StageDeploy:
+    Type: String
+    Description: "Nombre stage del ambiente"
+
+  InstanceName:
+    Type: String
+    Description: "Nombre de la instancia de Lightsail"
+
 Resources:
   LambdasDynamoEvents:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://source-app-eventos-udm-test.s3.us-east-1.amazonaws.com/stack-lambdas-DynamoDB-events.yml"
+      TemplateURL: !Sub "https://${SourceCodeBucketName}.s3.us-east-1.amazonaws.com/stack-lambdas-DynamoDB-events.yml"
+      Parameters:
+        SourceCodeBucketName: !Ref SourceCodeBucketName
 
   AttendeeRegistersStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://source-app-eventos-udm-test.s3.us-east-1.amazonaws.com/stack-attendee-register.yml"
+      TemplateURL: !Sub "https://${SourceCodeBucketName}.s3.us-east-1.amazonaws.com/stack-attendee-register.yml"
       Parameters:
+        SourceCodeBucketName: !Ref SourceCodeBucketName
+        EventRegistersBucketName: !Ref EventRegistersBucketName
+        SESVerifiedSenderEmailIdentityName: !Ref SESVerifiedSenderEmailIdentityName
+        SESVerifiedDestinationEmailIdentityName: !Ref SESVerifiedDestinationEmailIdentityName
         EventsTableArn: !GetAtt LambdasDynamoEvents.Outputs.EventsTableArn
         EventsTableName: !GetAtt LambdasDynamoEvents.Outputs.EventsTableName
     DependsOn: LambdasDynamoEvents
@@ -20,8 +55,10 @@ Resources:
   APIGatewayAuthorizerStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://source-app-eventos-udm-test.s3.us-east-1.amazonaws.com/stack-api-gateway.yml"
+      TemplateURL: !Sub "https://${SourceCodeBucketName}.s3.us-east-1.amazonaws.com/stack-api-gateway.yml"
       Parameters:
+        SourceCodeBucketName: !Ref SourceCodeBucketName
+        StageDeploy: !Ref StageDeploy
         LambdaCreateEventFunctionArn: !GetAtt LambdasDynamoEvents.Outputs.LambdaCreateEventFunctionArn
         LambdaEditEventFunctionArn: !GetAtt LambdasDynamoEvents.Outputs.LambdaEditEventFunctionArn
         LambdaDeleteEventFunctionArn: !GetAtt LambdasDynamoEvents.Outputs.LambdaDeleteEventFunctionArn
@@ -29,10 +66,19 @@ Resources:
         AttendeeRegisterLambdaArn: !GetAtt AttendeeRegistersStack.Outputs.AttendeeRegisterLambdaArn
     DependsOn: AttendeeRegistersStack
 
+  LightsailStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://${SourceCodeBucketName}.s3.us-east-1.amazonaws.com/stack-lightsail.yml"
+      Parameters:
+        InstanceName: !Ref InstanceName
+        ApiBaseURL: !GetAtt APIGatewayAuthorizerStack.Outputs.ApiBaseURL
+    DependsOn: APIGatewayAuthorizerStack
+
   EventGlue:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://source-app-eventos-udm-test.s3.us-east-1.amazonaws.com/stack-s3Athena.yml"
+      TemplateURL: "https://${SourceCodeBucketName}.s3.us-east-1.amazonaws.com/stack-s3Athena.yml"
       Parameters:
         EventRegisterBucketName: !GetAtt AttendeeRegistersStack.Outputs.EventRegisterBucketName
     DependsOn: AttendeeRegistersStack
