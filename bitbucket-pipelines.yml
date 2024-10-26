@@ -1,5 +1,8 @@
 image: python:3.10-slim
 
+#se usa esta imagen porque ya tiene unificada la herramienta de linea de comandos de AWS
+#image: amazon/aws-cli
+
 pipelines:
   default:
     - step:
@@ -17,13 +20,13 @@ pipelines:
             aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
             aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
             aws configure set default.region $AWS_REGION
-            
+
           - cd lambdas
           # Crear un archivo zip para cada archivo .py dentro de la carpeta
           - for file in *.py; do zip "${file%.py}.zip" "$file"; done
           # Subir todos los archivos .zip al bucket S3
           - aws s3 cp ./ s3://$S3_BUCKET_NAME/ --recursive --exclude "*" --include "*.zip"
-          
+
           - cd ../
           - cd stacks
           # Subir todos los archivos .yml al bucket S3
