@@ -19,10 +19,6 @@ Parameters:
     Type: String
     Description: "Correo que será verificado manualmente en SES para recibir correos"
 
-  SESVerifiedDestinationEmailIdentityName:
-    Type: String
-    Description: "Correo que será verificado manualmente en SES para recibir correos"
-
   StageDeploy:
     Type: String
     Description: "Nombre stage del ambiente"
