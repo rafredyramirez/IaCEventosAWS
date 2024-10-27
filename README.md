@@ -7,9 +7,11 @@ A continuación, se detallan los pasos necesarios para instalar, configurar y de
 
 # Requisitos previos
 
-1. Cuenta de AWS: Asegúrate de tener acceso a una cuenta de AWS con los permisos adecuados para crear recursos mediante CloudFormation.
+1. Cuenta de AWS: Asegúrate de tener acceso a una cuenta de AWS con los permisos adecuados para crear recursos mediante CloudFormation para poder parametrizar las varibles: AWS_ACCESS_KEY_ID y AWS_SECRET_ACCESS_KEY.
 
-2. Acceso a SES: Los correos del sistema se envían y reciben a través de Amazon SES, por lo que es necesario verificar las identidades de correo.
+2. Tener creado un bucked de S3 que irá en las variables SourceCodeBucketName y EventRegistersBucketName
+
+3. Acceso a SES: Los correos del sistema se envían y reciben a través de Amazon SES, por lo que es necesario verificar las identidades de correo y estos se reemplazarán en las variables: SESVerifiedSenderEmailIdentityName y SESVerifiedDestinationEmailIdentityName
 
 
 # Despliegue de IaC - Pasos de configuración
