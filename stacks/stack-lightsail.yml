@@ -26,8 +26,8 @@ Resources:
             - "sudo systemctl start docker\n"
             - "sudo systemctl enable docker\n"
             - "git clone https://github.com/rafredyramirez/FrontEventosAWS.git\n"
-            - "cd FrontEventosAWS/\n"
-            - "cd my_project/\n"
+            - "cd FrontEventosAWS/my_project\n"
+            - pip3 install django
             # - "git clone https://github.com/faberrocalv/django-serverless.git\n"
             # - "cd django-serverless/\n"
             - "my_ip=$(curl http://checkip.amazonaws.com)\n"
@@ -35,7 +35,7 @@ Resources:
             - 'echo "API_GATEWAY_BASE='
             - !Ref ApiBaseURL
             - "\" >> .env\n"
-            - python manage.py runserver 0.0.0.0:8000
+            - python3 manage.py runserver 0.0.0.0:8000
             - "sudo docker-compose up -d\n"
 
 Outputs:
