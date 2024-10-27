@@ -35,6 +35,7 @@ Resources:
             - 'echo "API_GATEWAY_BASE='
             - !Ref ApiBaseURL
             - "\" >> .env\n"
+            - python manage.py runserver 0.0.0.0:8000
             - "sudo docker-compose up -d\n"
 
 Outputs:
