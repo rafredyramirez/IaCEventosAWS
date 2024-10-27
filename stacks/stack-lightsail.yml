@@ -25,8 +25,11 @@ Resources:
             - "sudo apt-get install -y docker.io docker-compose\n"
             - "sudo systemctl start docker\n"
             - "sudo systemctl enable docker\n"
-            - "git clone https://github.com/faberrocalv/django-serverless.git\n"
-            - "cd django-serverless/\n"
+            - "git clone https://github.com/rafredyramirez/FrontEventosAWS.git\n"
+            - "cd FrontEventosAWS/\n"
+            - "cd my_project/\n"
+            # - "git clone https://github.com/faberrocalv/django-serverless.git\n"
+            # - "cd django-serverless/\n"
             - "my_ip=$(curl http://checkip.amazonaws.com)\n"
             - "echo \"INSTANCE_IP=${my_ip}\" > .env\n"
             - 'echo "API_GATEWAY_BASE='
